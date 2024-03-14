@@ -27,14 +27,13 @@ DEFAULT_CONTAINER_NAME="archlinux-dev-container"
 DOCKER_COMPOSE_FILE_URL="https://raw.githubusercontent.com/0x369k/dotfiles/main/.devcontainer/docker-compose.yml"
 TMP_DOCKER_COMPOSE_FILE="./docker-compose.yml"
 
-# Funktion für sichere Exits mit Fehlermeldung
 safe_exit() {
     echo -e "${RED}[✖]${NC} An error occurred. Exiting safely..."
     echo "Error details: $1"
+    rm -rf "$TMP_DOCKER_COMPOSE_DIR"
     exit 1
 }
 
-# Funktion zum Sichern von Dateien
 backup_files() {
     echo "❯ Backing up configuration files and directories..."
     mkdir -p "${BACKUPDIR}" || safe_exit "Could not create backup directory: ${BACKUPDIR}"
@@ -79,49 +78,42 @@ initialize_and_checkout_dotfiles() {
 }
 
 deploy_docker() {
-    local IMAGE_NAME=${CUSTOM_IMAGE_NAME:-$DEFAULT_IMAGE_NAME}
-    local BASE_IMAGE=${CUSTOM_BASE_IMAGE:-$DEFAULT_BASE_IMAGE}
-    
+    local IMAGE_NAME="${1:-$DEFAULT_IMAGE_NAME}"
+    local BASE_IMAGE="${2:-archlinux:latest}"
+    local CONTAINER_NAME="${3:-$DEFAULT_CONTAINER_NAME}"
+
     echo "❯ Deploying dotfiles in Docker container using docker-compose..."
 
-    # Prüfe, ob docker-compose installiert und verfügbar ist
-    if ! command -v docker-compose &>/dev/null; then
-        safe_exit "docker-compose is not installed or not available in PATH."
-    fi
+    # Download the docker-compose.yml file to a temporary directory
+    curl -Lks "$DOCKER_COMPOSE_FILE_URL" -o "$TMP_DOCKER_COMPOSE_DIR/docker-compose.yml" || safe_exit "Failed to download docker-compose.yml temporarily."
 
-    # Download the docker-compose.yml file temporarily
-    curl -Lks "$DOCKER_COMPOSE_FILE_URL" -o "$TMP_DOCKER_COMPOSE_FILE" || safe_exit "Failed to download docker-compose.yml temporarily."
-
-    sed -i "s|{{CONTAINER_NAME}}|$CUSTOM_CONTAINER_NAME|g" "$TMP_DOCKER_COMPOSE_FILE"
-    sed -i "s|{{IMAGE_NAME}}|$CUSTOM_IMAGE_NAME|g" "$TMP_DOCKER_COMPOSE_FILE"
-    sed -i "s|{{BASE_IMAGE}}|$CUSTOM_BASE_IMAGE|g" "$TMP_DOCKER_COMPOSE_FILE"
+    # Anpassen der docker-compose.yml
+    sed -i "s|{{IMAGE_NAME}}|$IMAGE_NAME|g" "$TMP_DOCKER_COMPOSE_DIR/docker-compose.yml"
+    sed -i "s|{{BASE_IMAGE}}|$BASE_IMAGE|g" "$TMP_DOCKER_COMPOSE_DIR/docker-compose.yml"
+    sed -i "s|{{CONTAINER_NAME}}|$CONTAINER_NAME|g" "$TMP_DOCKER_COMPOSE_DIR/docker-compose.yml"
 
     # Bau und Start des Containers
-    docker-compose -f "$TMP_DOCKER_COMPOSE_FILE" up -d || safe_exit "Failed to deploy using docker-compose."
+    docker-compose -f "$TMP_DOCKER_COMPOSE_DIR/docker-compose.yml" up -d || safe_exit "Failed to deploy using docker-compose."
 
+    echo -e "${GREEN}[✔]${NC} Docker container $CONTAINER_NAME started."
     # Bereinigung
-    rm "$TMP_DOCKER_COMPOSE_FILE" || echo "Warning: Failed to remove temporary docker-compose file."
-
-    echo -e "${GREEN}[✔]${NC} Docker container $DEFAULT_CONTAINER_NAME started."
+    rm -rf "$TMP_DOCKER_COMPOSE_DIR"
 }
 
 parse_arguments() {
+    DEPLOY_MODE="local"
+    CUSTOM_IMAGE_NAME=$DEFAULT_IMAGE_NAME
+    CUSTOM_BASE_IMAGE="archlinux:latest"
+    CUSTOM_CONTAINER_NAME=$DEFAULT_CONTAINER_NAME
+
     if [[ "$1" == "--docker" ]]; then
-        shift # Entferne '--docker'
+        shift
         DEPLOY_MODE="docker"
-        if [[ -n "$1" && "$1" != "--"* ]]; then
-            CUSTOM_IMAGE_NAME="$1"
-            shift # Entferne CUSTOM_IMAGE_NAME aus der Liste der Argumente
-        fi
-        if [[ -n "$1" && "$1" != "--"* ]]; then
-            CUSTOM_BASE_IMAGE="$1"
-            # CUSTOM_BASE_IMAGE wird durch das Argument überschrieben
-        fi
-    else
-        DEPLOY_MODE="local"
+        [ -n "$1" ] && { CUSTOM_CONTAINER_NAME="$1"; shift; }
+        [ -n "$1" ] && { CUSTOM_IMAGE_NAME="$1"; shift; }
+        [ -n "$1" ] && { CUSTOM_BASE_IMAGE="$1"; }
     fi
 }
-
 
 main() {
     parse_arguments "$@"
@@ -129,7 +121,7 @@ main() {
     echo "Deployment mode: ${DEPLOY_MODE}"
     
     if [ "${DEPLOY_MODE}" == "docker" ]; then
-        deploy_docker "$CUSTOM_IMAGE_NAME" "$CUSTOM_BASE_IMAGE"
+        deploy_docker "$CUSTOM_IMAGE_NAME" "$CUSTOM_BASE_IMAGE" "$CUSTOM_CONTAINER_NAME"
     elif [ "${DEPLOY_MODE}" == "local" ]; then
         backup_files
         initialize_and_checkout_dotfiles
