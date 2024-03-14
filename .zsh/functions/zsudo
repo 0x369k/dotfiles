@@ -1,0 +1,3 @@
+zsudo () {
+    sudo env "PATH=$PATH" $@
+}

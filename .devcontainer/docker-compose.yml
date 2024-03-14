@@ -1,0 +1,17 @@
+version: '3.8'
+services:
+  dev-environment:
+    build:
+      context: ./home/developer/.devcontainer 
+      dockerfile: Dockerfile
+    image: archlinux-dev:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - .:/home/developer:cached
+      - ~/.ssh:/home/developer/.ssh:cached
+    user: developer
+    environment:
+      - USER=developer
+    working_dir: /home/developer
+    stdin_open: true
+    tty: true

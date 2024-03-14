@@ -1,0 +1,19 @@
+#compdef cdp
+
+_projects() {
+    local -a projects
+    # Pfad zu Ihrem Projektverzeichnis
+    local project_dir="/data/work/projects"
+
+    # Lese die Namen der Projekte in das Array
+    projects=($(ls "${project_dir}" 2>/dev/null))
+
+    _describe 'project' projects
+}
+
+cdp() {
+    # Ändert das Verzeichnis zum ausgewählten Projekt
+    cd "/data/work/projects/$1"
+}
+
+_projects

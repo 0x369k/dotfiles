@@ -1,0 +1,21 @@
+fzf="fzf --preview='
+  if file --mime-type {} | grep -qF image/; then
+    kitty icat --clear --transfer-mode=memory --stdin=no --place=\${FZF_PREVIEW_COLUMNS}x\${FZF_PREVIEW_LINES}@0x0 {} | sed \$d
+  else
+    bat --color=always {}
+  fi
+'"
+
+# Funktion, um den Inhalt einer Datei mit fzf zu durchsuchen
+fzf_search_file_content() {
+    local file
+    file=$(fd . $PWD 2>/dev/null | fzf --preview 'bat --color=always --line-range :500 {}' --preview-window=up:30%)
+    if [ -n "$file" ]; then
+        bat --color=always --line-range :500 "$file"
+    fi
+}
+
+# Alias für die Verwendung der Funktion
+alias fzfsearch=fzf_search_file_content
+export FZF_DEFAULT_OPTS="--preview 'bat --color=always {}'"
+export FZF_DEFAULT_COMMAND="fd --type f"

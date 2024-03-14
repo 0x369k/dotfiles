@@ -1,0 +1,29 @@
+# Hilfsfunktion für stilisierte Überschriften
+_msg_() {
+    local message="$1"
+    print -P "%F{240}%B╔══════════════════════════════╗\n║ %F{248}%B▓▒░ $message ▓▒░ %F{240}║\n╚══════════════════════════════╝%f%b"
+}
+
+# Verbesserte zi-info Funktion
+zi_info() {
+    clear
+    
+    # Stilisierte Überschrift für "Overall ZI status"
+    _msg_"Overall ZI status"
+    zi zstatus
+    echo
+    
+    # Stilisierte Überschrift für "Show loaded plugins"
+    _msg_ "Show loaded plugins"
+    zi loaded
+    echo
+    
+    # Stilisierte Überschrift für "Statistics on plugin load times"
+    _msg_ "Plugin Load Times"
+    zi times
+    echo
+    
+    # Stilisierte Überschrift für "BIN Directory Listing"
+    _msg_ "BIN Directory Listing"
+    ls -l $ZPFX/bin/ | awk '{print $(NF-2),$(NF-1),$NF}'
+}

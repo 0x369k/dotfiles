@@ -1,0 +1,46 @@
+msg() {
+    local type="${1}" # Nachrichtentyp: info, success, warning, error
+    local message="${*:2}" # Die Nachricht, die ausgegeben werden soll
+    local reset_color="%f%k" # Setzt Farbe und Hintergrund zurück
+    local message_color="%F{240}" # Abgedunkeltes Weiß für den Nachrichtentext
+    local caller_func="${funcstack[2]:-global}" # Ermittelt den Funktionsnamen oder 'global'
+    local source_file="${(%):-%x}" # Ermittelt den Namen der aktuellen Datei
+    local display_context
+    local file_display
+
+    # Kontext und Dateiname anpassen
+    if [[ "$caller_func" != "global" ]]; then
+        display_context="[${caller_func}]"
+        file_display=":" # Zeigt Doppelpunkt ohne Dateiname für Funktionen
+    else
+        # Prüfen, ob sich die Datei in ZSH_CONFIG_FILES befindet
+        local found=false
+        for config_file in "${ZSH_CONFIG_FILES[@]}"; do
+            if [[ "$source_file" == "$config_file" ]]; then
+                found=true
+                break
+            fi
+        done
+        
+        if [[ "$found" == true ]]; then
+            display_context="[/home/developer/.zsh/.zshrc]"
+            file_display=":" # Zeigt Doppelpunkt ohne Dateiname für .zshrc
+        else
+            display_context="[test_msg]" # Für Skriptaufrufe ausserhalb von Funktionen
+            file_display=": $(basename "$source_file")" # Zeigt Dateinamen für Skriptaufrufe
+        fi
+    fi
+
+    # Stil und Farbe basierend auf dem Nachrichtentyp definieren
+    local type_color
+    case "$type" in
+        info) type_color="%F{46}" ;; # Grün
+        success) type_color="%F{33}" ;; # Blau
+        warning) type_color="%F{214}" ;; # Gelb
+        error) type_color="%F{160}" ;; # Rot
+        *) echo "Unbekannter Nachrichtentyp: '$type'"; return 1 ;;
+    esac
+
+    # Ausgabe formatieren
+    print -P "${type_color}${type} ${message_color}${display_context}${file_display}: ${message}${reset_color}"
+}

@@ -1,0 +1,27 @@
+{
+    "name": "Arch Linux Dev Container",
+    "build": {
+        "context": ".",
+        "dockerfile": "Dockerfile"
+    },
+    "customizations": {
+        "vscode": {
+            "settings": {
+                "terminal.integrated.defaultProfile.linux": "zsh"
+            },
+            "extensions": [
+                "ms-vscode.cpptools",
+                "ms-python.python",
+                "golang.go",
+                "eamodio.gitlens"
+            ]
+        }
+    },
+    "remoteUser": "developer",
+    "workspaceFolder": "/home/developer",
+    "mounts": [
+        "source=${localWorkspaceFolder},target=/home/developer,type=bind,consistency=cached",
+        "source=${localEnv:HOME}${localEnv:USERPROFILE}/.ssh,target=/home/developer/.ssh,type=bind,consistency=cached"
+    ]
+    
+}
