@@ -1,13 +1,13 @@
 version: '3.8'
 services:
   dev-environment:
-    container_name: "${CONTAINER_NAME:-archlinux-dev-container}"
+    container_name: "${CONTAINER_NAME:-default-container-name}"
     build:
       context: .
       dockerfile: Dockerfile
       args:
-        - BASE_IMAGE=${BASE_IMAGE:-archlinux:latest}
-    image: "${IMAGE_NAME:-archlinux-dev:latest}"
+        BASE_IMAGE: "${BASE_IMAGE:-archlinux:latest}"
+    image: "${IMAGE_NAME:-default-image-name}"
     volumes:
       - .:/home/developer:cached
       - ~/.ssh:/home/developer/.ssh:cached
