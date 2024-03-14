@@ -1,5 +1,5 @@
 {
-    "name": "Arch Linux Dev Container",
+    "name": "Dev Container",
     "build": {
         "context": ".",
         "dockerfile": "Dockerfile"
