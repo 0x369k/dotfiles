@@ -79,8 +79,8 @@ initialize_and_checkout_dotfiles() {
 }
 
 deploy_docker() {
-    local IMAGE_NAME=${1:-$DEFAULT_IMAGE_NAME}
-    local BASE_IMAGE=${2:-$DEFAULT_BASE_IMAGE}
+    local IMAGE_NAME=${CUSTOM_IMAGE_NAME:-$DEFAULT_IMAGE_NAME}
+    local BASE_IMAGE=${CUSTOM_BASE_IMAGE:-$DEFAULT_BASE_IMAGE}
     
     echo "❯ Deploying dotfiles in Docker container using docker-compose..."
 
@@ -110,19 +110,13 @@ parse_arguments() {
     if [[ "$1" == "--docker" ]]; then
         shift # Entferne '--docker'
         DEPLOY_MODE="docker"
-        # Überprüfe und speichere das nächste Argument als IMAGE_NAME, falls vorhanden
         if [[ -n "$1" && "$1" != "--"* ]]; then
             CUSTOM_IMAGE_NAME="$1"
-            shift # Entferne IMAGE_NAME aus der Liste der Argumente
-        else
-            CUSTOM_IMAGE_NAME="$DEFAULT_IMAGE_NAME"
+            shift # Entferne CUSTOM_IMAGE_NAME aus der Liste der Argumente
         fi
-        # Überprüfe und speichere das nächste Argument als BASE_IMAGE, falls vorhanden
         if [[ -n "$1" && "$1" != "--"* ]]; then
             CUSTOM_BASE_IMAGE="$1"
-            # BASE_IMAGE wird durch Argument überschrieben
-        else
-            CUSTOM_BASE_IMAGE="$DEFAULT_BASE_IMAGE"
+            # CUSTOM_BASE_IMAGE wird durch das Argument überschrieben
         fi
     else
         DEPLOY_MODE="local"
