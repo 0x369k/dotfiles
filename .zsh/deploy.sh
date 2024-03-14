@@ -77,45 +77,56 @@ initialize_and_checkout_dotfiles() {
     echo -e "${GREEN}[✔]${NC} Dotfiles repository initialized and checked out."
 }
 
+
+TMP_DOCKER_COMPOSE_DIR=$(mktemp -d) # Korrektur: Definition des temporären Verzeichnisses
+
 deploy_docker() {
     local IMAGE_NAME="${1:-$DEFAULT_IMAGE_NAME}"
-    local BASE_IMAGE="${2:-archlinux:latest}"
+    local BASE_IMAGE="${2:-archlinux:latest}" # Anpassung, um eine Standard-Basis-Image zu setzen
     local CONTAINER_NAME="${3:-$DEFAULT_CONTAINER_NAME}"
 
     echo "❯ Deploying dotfiles in Docker container using docker-compose..."
 
-    # Download the docker-compose.yml file to a temporary directory
-    curl -Lks "$DOCKER_COMPOSE_FILE_URL" -o "$TMP_DOCKER_COMPOSE_DIR/docker-compose.yml" || safe_exit "Failed to download docker-compose.yml temporarily."
+    curl -Lks "$DOCKER_COMPOSE_FILE_URL" -o "$TMP_DOCKER_COMPOSE_DIR/docker-compose.yml" || safe_exit "Failed to download docker-compose.yml."
 
-    # Anpassen der docker-compose.yml
+    # Ersetze Platzhalter direkt in der heruntergeladenen docker-compose.yml
     sed -i "s|{{IMAGE_NAME}}|$IMAGE_NAME|g" "$TMP_DOCKER_COMPOSE_DIR/docker-compose.yml"
     sed -i "s|{{BASE_IMAGE}}|$BASE_IMAGE|g" "$TMP_DOCKER_COMPOSE_DIR/docker-compose.yml"
     sed -i "s|{{CONTAINER_NAME}}|$CONTAINER_NAME|g" "$TMP_DOCKER_COMPOSE_DIR/docker-compose.yml"
 
-    # Bau und Start des Containers
     docker-compose -f "$TMP_DOCKER_COMPOSE_DIR/docker-compose.yml" up -d || safe_exit "Failed to deploy using docker-compose."
 
-    echo -e "${GREEN}[✔]${NC} Docker container $CONTAINER_NAME started."
-    # Bereinigung
-    rm -rf "$TMP_DOCKER_COMPOSE_DIR"
+    rm -rf "$TMP_DOCKER_COMPOSE_DIR" # Bereinigung nach der Ausführung
 }
 
 parse_arguments() {
     DEPLOY_MODE="local"
-    CUSTOM_IMAGE_NAME=$DEFAULT_IMAGE_NAME
-    CUSTOM_BASE_IMAGE="archlinux:latest"
-    CUSTOM_CONTAINER_NAME=$DEFAULT_CONTAINER_NAME
-
-    if [[ "$1" == "--docker" ]]; then
+    while [[ "$#" -gt 0 ]]; do
+        case $1 in
+            --docker)
+                DEPLOY_MODE="docker"
+                shift # Entfernt --docker
+                CUSTOM_CONTAINER_NAME="${1:-$DEFAULT_CONTAINER_NAME}"
+                shift
+                CUSTOM_IMAGE_NAME="${1:-$DEFAULT_IMAGE_NAME}"
+                shift
+                CUSTOM_BASE_IMAGE="${1:-archlinux:latest}"
+                ;;
+            --local) 
+                DEPLOY_MODE="local"
+                ;;
+            *) 
+                echo -e "${RED}Unknown argument: $1${NC}"
+                exit 1
+                ;;
+        esac
         shift
-        DEPLOY_MODE="docker"
-        [ -n "$1" ] && { CUSTOM_CONTAINER_NAME="$1"; shift; }
-        [ -n "$1" ] && { CUSTOM_IMAGE_NAME="$1"; shift; }
-        [ -n "$1" ] && { CUSTOM_BASE_IMAGE="$1"; }
-    fi
+    done
 }
 
+
 main() {
+        TMP_DOCKER_COMPOSE_DIR=$(mktemp -d) # Stelle sicher, dass ein temporäres Verzeichnis für jede Ausführung erstellt wird
     parse_arguments "$@"
 
     echo "Deployment mode: ${DEPLOY_MODE}"
