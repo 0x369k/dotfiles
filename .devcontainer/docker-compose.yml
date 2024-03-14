@@ -1,1 +1,18 @@
-cle
+version: '3.8'
+services:
+  dev-environment:
+    container_name: "${CONTAINER_NAME:-archlinux-dev-container}"
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - BASE_IMAGE=${BASE_IMAGE:-archlinux:latest}
+    image: "${IMAGE_NAME:-archlinux-dev:latest}"
+    volumes:
+      - .:/home/developer:cached
+      - ~/.ssh:/home/developer/.ssh:cached
+    environment:
+      - USER=developer
+    working_dir: /home/developer
+    stdin_open: true
+    tty: true
