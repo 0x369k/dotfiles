@@ -1,10 +1,9 @@
 version: '3.8'
 services:
   dev-environment:
-    container_name: "${CONTAINER_NAME:-default-container-name}"
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: .devcontainer  # oder ein anderes Verzeichnis, das dein Dockerfile enthält
+      dockerfile: Dockerfile  # Pfad relativ zum context
       args:
         BASE_IMAGE: "${BASE_IMAGE:-archlinux:latest}"
     image: "${IMAGE_NAME:-default-image-name}"
