@@ -110,18 +110,25 @@ parse_arguments() {
     if [[ "$1" == "--docker" ]]; then
         shift # Entferne '--docker'
         DEPLOY_MODE="docker"
-        if [ -n "$1" ]; then
-            IMAGE_NAME="$1"
-            shift # Entferne das optionale IMAGE_NAME Argument
+        # Überprüfe und speichere das nächste Argument als IMAGE_NAME, falls vorhanden
+        if [[ -n "$1" && "$1" != "--"* ]]; then
+            CUSTOM_IMAGE_NAME="$1"
+            shift # Entferne IMAGE_NAME aus der Liste der Argumente
+        else
+            CUSTOM_IMAGE_NAME="$DEFAULT_IMAGE_NAME"
         fi
-        if [ -n "$1" ]; then
-            BASE_IMAGE="$1"
+        # Überprüfe und speichere das nächste Argument als BASE_IMAGE, falls vorhanden
+        if [[ -n "$1" && "$1" != "--"* ]]; then
+            CUSTOM_BASE_IMAGE="$1"
             # BASE_IMAGE wird durch Argument überschrieben
+        else
+            CUSTOM_BASE_IMAGE="$DEFAULT_BASE_IMAGE"
         fi
     else
         DEPLOY_MODE="local"
     fi
 }
+
 
 main() {
     parse_arguments "$@"
