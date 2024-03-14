@@ -130,7 +130,7 @@ main() {
     echo "Deployment mode: ${DEPLOY_MODE}"
     
     if [ "${DEPLOY_MODE}" == "docker" ]; then
-        deploy_docker "$IMAGE_NAME" "$BASE_IMAGE"
+        deploy_docker "$CUSTOM_IMAGE_NAME" "$CUSTOM_BASE_IMAGE"
     elif [ "${DEPLOY_MODE}" == "local" ]; then
         backup_files
         initialize_and_checkout_dotfiles
