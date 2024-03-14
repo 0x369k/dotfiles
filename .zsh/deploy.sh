@@ -12,159 +12,130 @@
 #   curl -Lks https://raw.githubusercontent.com/0x369k/dotfiles/main/.zsh/deploy.sh | bash -s -- --local
 #   curl -Lks https://raw.githubusercontent.com/0x369k/dotfiles/main/.zsh/deploy.sh | bash -s -- --docker
 ##########################################################################################################
-
 set -e
 
 GREEN='\033[0;32m'
 RED='\033[0;31m'
-NC='\033[0m'
-
+YELLOW='\033[0;33m'
+NC='\033[0m' # No Color
+DOTFILES_REPO="https://github.com/0x369k/dotfiles"
 DOTDIR="${HOME}/.dotfiles"
-BACKUPDIR="${HOME}/.dotfiles-backup/$(date +"%Y-%m-%d_%H-%M-%S")"
-ZSH_CONFIG_FILES=(".zshrc" ".zsh_history" ".zshenv" ".zlogin" ".zlogout" ".zprofile")
-IMAGE_NAME="dotfiles-dev-container"
-CONTAINER_NAME="dotfiles-testing"
 DEFAULT_BRANCH="main"
+BACKUPDIR="${HOME}/.dotfiles-backup/$(date +"%Y-%m-%d_%H-%M-%S")"
+DEFAULT_IMAGE_NAME="archlinux-dev:latest"
+DEFAULT_CONTAINER_NAME="archlinux-dev-container"
+DOCKER_COMPOSE_FILE_URL="https://raw.githubusercontent.com/0x369k/dotfiles/main/.devcontainer/docker-compose.yml"
+TMP_DOCKER_COMPOSE_FILE="./docker-compose.yml"
 
-# Checks if Docker is installed and exits if not found
-check_docker_dependency() {
-    if ! command -v docker &> /dev/null; then
-        echo -e "${RED}[✖]${NC} Docker not found. Please install Docker to continue."
-        exit 1
-    fi
-}
-
-# Safe exit with detailed error message
+# Funktion für sichere Exits mit Fehlermeldung
 safe_exit() {
     echo -e "${RED}[✖]${NC} An error occurred. Exiting safely..."
     echo "Error details: $1"
     exit 1
 }
 
-# Backup function for .zsh files not tracked in the repository
-backup_zsh_files() {
-    echo "❯ Backing up .zsh configuration files and directories..."
-    mkdir -p "${BACKUPDIR}" || safe_exit "Could not create directory for backup: ${BACKUPDIR}"
-    for zsh_file in "${ZSH_CONFIG_FILES[@]}" ".zi" ".zsh"; do
-        local file_path="${HOME}/${zsh_file}"
-        local backup_path="${BACKUPDIR}/${zsh_file}"
-
-        if [ -e "${file_path}" ]; then
-            if ! mv -v "${file_path}" "${backup_path}"; then
-                safe_exit "Error backing up ${file_path}"
-            fi
-            echo "✔ ${zsh_file} successfully backed up."
-        else
-            echo "File ${zsh_file} does not exist and will be skipped."
-        fi
-    done
-}
-
-# Improved backup function with detailed error checking
-backup_dotfiles() {
-    echo "❯ Backing up existing dotfiles..."
+# Funktion zum Sichern von Dateien
+backup_files() {
+    echo "❯ Backing up configuration files and directories..."
     mkdir -p "${BACKUPDIR}" || safe_exit "Could not create backup directory: ${BACKUPDIR}"
+    local LOCAL_CONFIG_FILES=(".zshrc" ".zshenv" ".zprofile" ".zlogin" ".zlogout" ".zsh_history")
+    local ZI_DIR=".zi"
 
-    git --git-dir="${DOTDIR}" --work-tree="${HOME}" ls-tree -r HEAD --name-only | while read -r repo_file; do
-        local file_path="${HOME}/${repo_file}"
-        local backup_path="${BACKUPDIR}/${repo_file}"
-
-        if [ -e "${file_path}" ]; then
-            mkdir -p "$(dirname "${backup_path}")" || safe_exit "Could not create directory for backup: $(dirname "${backup_path}")"
-            if ! mv -v "${file_path}" "${backup_path}"; then
-                safe_exit "Error backing up ${file_path}"
-            fi
-            echo "✔ ${repo_file} successfully backed up."
+    for file in "${LOCAL_CONFIG_FILES[@]}"; do
+        if [ -f "${HOME}/${file}" ]; then
+            mv "${HOME}/${file}" "${BACKUPDIR}/${file}" && echo -e "${GREEN}[✔]${NC} ${file} successfully backed up."
         else
-            echo "File ${repo_file} does not exist and will be skipped."
-        fi
-    done
-}
-
-# Ensure any running container is stopped and removed
-ensure_container_stopped() {
-    if docker ps -a | grep -q "${CONTAINER_NAME}"; then
-        echo "A container named '${CONTAINER_NAME}' already exists. It will be stopped and removed."
-        docker stop "${CONTAINER_NAME}" > /dev/null && docker rm "${CONTAINER_NAME}" > /dev/null || safe_exit "Error stopping and removing container ${CONTAINER_NAME}"
-    fi
-}
-
-# Function to verify and fix file transfer from the git repo
-verify_and_fix_repo_files_transfer() {
-    echo "❯ Verifying dotfiles transfer from the git repository..."
-    local missing_files=0
-
-    git --git-dir="${DOTDIR}" --work-tree="${HOME}" ls-tree -r HEAD --name-only | while read -r repo_file; do
-        if [ ! -e "${HOME}/${repo_file}" ]; then
-            echo "Missing ${repo_file}. Attempting to restore..."
-            git --git-dir="${DOTDIR}" --work-tree="${HOME}" checkout HEAD -- "${repo_file}"
-            missing_files=$((missing_files + 1))
+            echo -e "${YELLOW}Warning: ${file} does not exist and will be skipped.${NC}"
         fi
     done
 
-    if [ $missing_files -eq 0 ]; then
-        echo "✔ All files successfully transferred."
+    if [ -d "${HOME}/${ZI_DIR}" ]; then
+        mv "${HOME}/${ZI_DIR}" "${BACKUPDIR}/${ZI_DIR}" && echo -e "${GREEN}[✔]${NC} ${ZI_DIR} directory successfully backed up."
     else
-        echo "✔ Missing files attempted to be restored. Please check for any errors above."
+        echo -e "${YELLOW}Warning: ${ZI_DIR} directory does not exist and will be skipped.${NC}"
     fi
+
+    echo "${GREEN}Attempting to backup dotfiles managed by the repository...${NC}"
+    git clone "${DOTFILES_REPO}" "${TEMP_CLONE_DIR}" || safe_exit "Failed to clone the dotfiles repository temporarily."
+    (cd "${TEMP_CLONE_DIR}" && git ls-tree --full-tree -r --name-only HEAD) | while read file; do
+        if [ -e "${HOME}/${file}" ]; then
+            local dir_path=$(dirname "${file}")
+            mkdir -p "${BACKUPDIR}/${dir_path}"
+            mv "${HOME}/${file}" "${BACKUPDIR}/${file}" && echo -e "${GREEN}[✔]${NC} ${file} successfully backed up."
+        fi
+    done
+    rm -rf "${TEMP_CLONE_DIR}"
+    echo -e "${GREEN}[✔]${NC} All configuration files backed up."
 }
 
-# Install dotfiles locally
-install_dotfiles_locally() {
-    echo "❯ Installing dotfiles locally..."
+initialize_and_checkout_dotfiles() {
+    echo "Initializing dotfiles repository..."
     if [ ! -d "${DOTDIR}" ]; then
-        echo "Dotfiles repository not found. Cloning..."
-        git clone --bare https://github.com/0x369k/dotfiles "${DOTDIR}" || safe_exit "Failed to clone dotfiles repository."
+        git clone --bare "${DOTFILES_REPO}" "${DOTDIR}" || safe_exit "Failed to clone the dotfiles repository."
     fi
-
-    if git --git-dir="${DOTDIR}" --work-tree="${HOME}" checkout main; then
-        git --git-dir="${DOTDIR}" --work-tree="${HOME}" config --local status.showUntrackedFiles no
-        echo "Dotfiles successfully installed locally."
-        verify_and_fix_repo_files_transfer
-    else
-        safe_exit "Error deploying dotfiles."
-    fi
+    /usr/bin/git --git-dir=${DOTDIR} --work-tree=${HOME} config --local status.showUntrackedFiles no
+    /usr/bin/git --git-dir=${DOTDIR} --work-tree=${HOME} reset --hard "origin/${DEFAULT_BRANCH}"
+    echo -e "${GREEN}[✔]${NC} Dotfiles repository initialized and checked out."
 }
 
-# Deploy dotfiles in a Docker container
-deploy_dotfiles_to_docker() {
-    ensure_container_stopped
-    echo "Checking if Docker image exists..."
-    if ! docker image inspect "${IMAGE_NAME}" > /dev/null 2>&1; then
-        echo "Docker image '${IMAGE_NAME}' does not exist. Building now..."
-        docker build -t "${IMAGE_NAME}" -f ~/.devcontainer/Dockerfile ~/.devcontainer || safe_exit "Error building Docker image."
-    else
-        echo "Docker image '${IMAGE_NAME}' already exists."
+deploy_docker() {
+    local IMAGE_NAME=${1:-$DEFAULT_IMAGE_NAME}
+    local BASE_IMAGE=${2:-$DEFAULT_BASE_IMAGE}
+    
+    echo "❯ Deploying dotfiles in Docker container using docker-compose..."
+
+    # Prüfe, ob docker-compose installiert und verfügbar ist
+    if ! command -v docker-compose &>/dev/null; then
+        safe_exit "docker-compose is not installed or not available in PATH."
     fi
 
-    docker run -dit --name "${CONTAINER_NAME}" "${IMAGE_NAME}" /bin/zsh || safe_exit "Error starting Docker container."
-    echo "To enter the container, use: docker exec -it ${CONTAINER_NAME} /bin/zsh"
+    # Download the docker-compose.yml file temporarily
+    curl -Lks "$DOCKER_COMPOSE_FILE_URL" -o "$TMP_DOCKER_COMPOSE_FILE" || safe_exit "Failed to download docker-compose.yml temporarily."
+
+    # Anpassen der docker-compose.yml für benutzerdefinierte Konfiguration
+    sed -i "s|{{IMAGE_NAME}}|$IMAGE_NAME|g" "$TMP_DOCKER_COMPOSE_FILE"
+    sed -i "s|{{BASE_IMAGE}}|$BASE_IMAGE|g" "$TMP_DOCKER_COMPOSE_FILE"
+    sed -i "s|{{CONTAINER_NAME}}|$DEFAULT_CONTAINER_NAME|g" "$TMP_DOCKER_COMPOSE_FILE"
+
+    # Bau und Start des Containers
+    docker-compose -f "$TMP_DOCKER_COMPOSE_FILE" up -d || safe_exit "Failed to deploy using docker-compose."
+
+    # Bereinigung
+    rm "$TMP_DOCKER_COMPOSE_FILE" || echo "Warning: Failed to remove temporary docker-compose file."
+
+    echo -e "${GREEN}[✔]${NC} Docker container $DEFAULT_CONTAINER_NAME started."
+}
+
+parse_arguments() {
+    if [[ "$1" == "--docker" ]]; then
+        shift # Entferne '--docker'
+        DEPLOY_MODE="docker"
+        if [ -n "$1" ]; then
+            IMAGE_NAME="$1"
+            shift # Entferne das optionale IMAGE_NAME Argument
+        fi
+        if [ -n "$1" ]; then
+            BASE_IMAGE="$1"
+            # BASE_IMAGE wird durch Argument überschrieben
+        fi
+    else
+        DEPLOY_MODE="local"
+    fi
 }
 
 main() {
-    MODE="local" # Default mode
+    parse_arguments "$@"
 
-    # Parse command-line options
-    while [[ "$#" -gt 0 ]]; do
-        case $1 in
-            --docker) check_docker_dependency; MODE="docker"; ;;
-            --local) MODE="local"; ;;
-            *) echo "Unknown argument: $1"; exit 1 ;;
-        esac
-        shift
-    done
-
-    echo "Deployment mode: ${MODE}"
-
-    # Execute based on the chosen mode
-    if [ "$MODE" == "docker" ]; then
-        deploy_dotfiles_to_docker
-    elif [ "$MODE" == "local" ]; then
-        backup_zsh_files
-        backup_dotfiles
-        install_dotfiles_locally
+    echo "Deployment mode: ${DEPLOY_MODE}"
+    
+    if [ "${DEPLOY_MODE}" == "docker" ]; then
+        deploy_docker "$IMAGE_NAME" "$BASE_IMAGE"
+    elif [ "${DEPLOY_MODE}" == "local" ]; then
+        backup_files
+        initialize_and_checkout_dotfiles
+        echo -e "${GREEN}Dotfiles successfully deployed locally.${NC}"
     else
-        echo "Invalid mode selected."
+        echo -e "${RED}Invalid deployment mode selected.${NC}"
         exit 1
     fi
 }

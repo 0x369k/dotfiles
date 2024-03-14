@@ -1,15 +1,16 @@
 version: '3.8'
 services:
   dev-environment:
+    container_name: "${CONTAINER_NAME:-archlinux-dev-container}"
+    image: "${IMAGE_NAME:-archlinux-dev:latest}"  # Nutze IMAGE_NAME oder Standardwert
     build:
-      context: ./home/developer/.devcontainer 
+      context: .
       dockerfile: Dockerfile
-    image: archlinux-dev:latest
+      args:
+        BASE_IMAGE: "${BASE_IMAGE:-archlinux:latest}"  # Füge BASE_IMAGE als Build-Argument hinzu
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
       - .:/home/developer:cached
       - ~/.ssh:/home/developer/.ssh:cached
-    user: developer
     environment:
       - USER=developer
     working_dir: /home/developer
