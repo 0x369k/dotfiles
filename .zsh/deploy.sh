@@ -93,9 +93,9 @@ deploy_docker() {
     curl -Lks "$DOCKER_COMPOSE_FILE_URL" -o "$TMP_DOCKER_COMPOSE_FILE" || safe_exit "Failed to download docker-compose.yml temporarily."
 
     # Anpassen der docker-compose.yml für benutzerdefinierte Konfiguration
-    sed -i "s|{{IMAGE_NAME}}|$IMAGE_NAME|g" "$TMP_DOCKER_COMPOSE_FILE"
-    sed -i "s|{{BASE_IMAGE}}|$BASE_IMAGE|g" "$TMP_DOCKER_COMPOSE_FILE"
-    sed -i "s|{{CONTAINER_NAME}}|$DEFAULT_CONTAINER_NAME|g" "$TMP_DOCKER_COMPOSE_FILE"
+    sed -i "s|{{IMAGE_NAME}}|$CUSTOM_IMAGE_NAME|g" "$TMP_DOCKER_COMPOSE_FILE"
+    sed -i "s|{{BASE_IMAGE}}|$CUSTOM_BASE_IMAGE|g" "$TMP_DOCKER_COMPOSE_FILE"
+    sed -i "s|{{CONTAINER_NAME}}|$CUSTOM_CONTAINER_NAME|g" "$TMP_DOCKER_COMPOSE_FILE"
 
     # Bau und Start des Containers
     docker-compose -f "$TMP_DOCKER_COMPOSE_FILE" up -d || safe_exit "Failed to deploy using docker-compose."
