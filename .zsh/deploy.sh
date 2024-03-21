@@ -90,11 +90,15 @@ deploy_docker() {
   mkdir -p "$TEMP_DIR"
   curl -Lks "$DOCKERFILE_URL" -o "$TEMP_DIR/Dockerfile" || safe_exit "Error downloading Dockerfile"
   curl -Lks "$DOCKER_COMPOSE_FILE_URL" -o "$TEMP_DIR/docker-compose.yml" || safe_exit "Error downloading docker-compose.yml"
+  curl -Lks "https://raw.githubusercontent.com/0x369k/dotfiles/main/.devcontainer/package_manager_wrapper.sh" -o "$TEMP_DIR/package_manager_wrapper.sh" || safe_exit "Error downloading package_manager_wrapper.sh"
 
-  # Anpassen der Dockerfile, um das übergebene base_image zu verwenden
-  sed -i "s|FROM .*|FROM $base_image|" "$TEMP_DIR/Dockerfile"
+  local default_base_image=$(grep 'ARG BASE_IMAGE=' "$TEMP_DIR/Dockerfile" | cut -d'=' -f2)
 
-  # Anpassen der docker-compose.yml
+  # Überprüfe, ob ein benutzerdefiniertes Base-Image übergeben wurde
+  if [[ "$base_image" != "$default_base_image" ]]; then
+    sed -i "s|ARG BASE_IMAGE=.*|ARG BASE_IMAGE=$base_image|" "$TEMP_DIR/Dockerfile"
+  fi
+
   sed -i "s|{{IMAGE_NAME}}|$image_name|g" "$TEMP_DIR/docker-compose.yml"
   sed -i "s|{{CONTAINER_NAME}}|$container_name|g" "$TEMP_DIR/docker-compose.yml"
   sed -i "s|- .:/home/developer:cached|- $current_dir:/home/developer/workspace:cached|g" "$TEMP_DIR/docker-compose.yml"
