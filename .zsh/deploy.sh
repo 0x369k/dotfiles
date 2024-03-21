@@ -72,25 +72,31 @@ initialize_and_checkout_dotfiles() {
   echo -e "[${GREEN}✔${NC}] Dotfiles checked out successfully."
 }
 
+# Funktion deploy_docker() überarbeiten:
 deploy_docker() {
-  local container_name="${1:-devcontainer}"
-  local image_name="${2:-default_image_name}"
-  local base_image="${3:-archlinux:latest}"
+  # Lese Standardwerte aus Docker-Dateien
+  local default_base_image=$(grep 'ARG BASE_IMAGE=' Dockerfile | cut -d'=' -f2)
+  local default_image_name=$(grep 'image: ' docker-compose.yml | awk '{print $2}' | sed 's/"//g' | sed "s/'//g")
+  local default_container_name=$(grep 'container_name: ' docker-compose.yml | awk '{print $2}' | sed 's/"//g' | sed "s/'//g")
 
-  image_name=$(echo "${image_name}" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]')
-  base_image=$(echo "${base_image}" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]')
+  # Argumente oder Standardwerte nutzen
+  local container_name="${1:-$default_container_name}"
+  local image_name="${2:-$default_image_name}"
+  local base_image="${3:-$default_base_image}"
+  local current_dir=$(pwd)
 
-  echo -e "[${BLUE}i${NC}] Downloading docker-compose.yml..."
-  curl -Lks https://raw.githubusercontent.com/0x369k/dotfiles/main/.devcontainer/docker-compose.yml -o docker-compose.yml || safe_exit "Error while downloading docker-compose.yml"
-  echo -e "[${GREEN}✔${NC}] docker-compose.yml downloaded successfully."
+  # Bereite docker-compose.yml vor
+  curl -Lks "$DOCKER_COMPOSE_FILE_URL" -o "$TEMP_DIR/docker-compose.yml" || safe_exit "Error downloading docker-compose.yml"
+  sed -i "s|{{IMAGE_NAME}}|$image_name|g" "$TEMP_DIR/docker-compose.yml"
+  sed -i "s|{{BASE_IMAGE}}|$base_image|g" "$TEMP_DIR/docker-compose.yml"
+  sed -i "s|{{CONTAINER_NAME}}|$container_name|g" "$TEMP_DIR/docker-compose.yml"
+  sed -i "s|- .:/home/developer:cached|- $current_dir:/home/developer/workspace:cached|g" "$TEMP_DIR/docker-compose.yml"
 
-  sed -i "s/\${IMAGE_NAME:-default-image-name}/${image_name}/g" docker-compose.yml
-  sed -i "s/\${BASE_IMAGE:-archlinux:latest}/${base_image}/g" docker-compose.yml
-
-  echo -e "[${BLUE}i${NC}] Starting Docker container..."
-  docker-compose up -d --build || safe_exit "Error while starting the Docker container"
-  echo -e "[${GREEN}✔${NC}] Docker container started successfully."
-  echo -e "You can enter the container with ${YELLOW}docker exec -it ${container_name} /usr/bin/zsh${NC}"
+  # Docker-Container starten
+  docker-compose -f "$TEMP_DIR/docker-compose.yml" up -d --build || safe_exit "Failed to start Docker container"
+  echo "Docker container $container_name started. You can enter with 'docker exec -it $container_name /usr/bin/zsh'"
+  # Bereinige temporäres Verzeichnis
+  rm -rf "$TEMP_DIR"
 }
 
 parse_arguments() {
