@@ -80,18 +80,19 @@ deploy_docker() {
   curl -Lks "$DOCKERFILE_URL" -o "$TEMP_DIR/Dockerfile" || safe_exit "Error downloading Dockerfile"
   curl -Lks "$DOCKER_COMPOSE_FILE_URL" -o "$TEMP_DIR/docker-compose.yml" || safe_exit "Error downloading docker-compose.yml"
 
-  # Anpassen der docker-compose.yml um das übergebene base_image zu verwenden
+  # Anpassen der Dockerfile, um das übergebene base_image zu verwenden
+  sed -i "s|FROM .*|FROM $base_image|" "$TEMP_DIR/Dockerfile"
+
+  # Anpassen der docker-compose.yml
   sed -i "s|{{IMAGE_NAME}}|$image_name|g" "$TEMP_DIR/docker-compose.yml"
   sed -i "s|{{CONTAINER_NAME}}|$container_name|g" "$TEMP_DIR/docker-compose.yml"
   sed -i "s|- .:/home/developer:cached|- $current_dir:/home/developer/workspace:cached|g" "$TEMP_DIR/docker-compose.yml"
 
-  # Hier fügen wir die --build-arg Option hinzu, um das benutzerdefinierte Base-Image zu setzen
-  echo "Using base image: $base_image"
-  docker-compose -f "$TEMP_DIR/docker-compose.yml" build --build-arg BASE_IMAGE="$base_image" || safe_exit "Failed to build Docker image"
-  docker-compose -f "$TEMP_DIR/docker-compose.yml" up -d || safe_exit "Failed to start Docker container"
+  docker-compose -f "$TEMP_DIR/docker-compose.yml" up -d --build || safe_exit "Failed to start Docker container"
   echo "Docker container $container_name started. You can enter with 'docker exec -it $container_name /usr/bin/zsh'"
   rm -rf "$TEMP_DIR"
 }
+
 
 parse_arguments() {
   while [[ $# -gt 0 ]]; do

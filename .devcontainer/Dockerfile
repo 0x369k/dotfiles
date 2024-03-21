@@ -15,9 +15,8 @@ RUN useradd -m -s /usr/bin/zsh developer && \
 USER developer
 WORKDIR /home/developer
 
-# Herunterladen, Ausführbar machen und Ausführen des Deploy-Skripts
+# Herunterladen und Ausführbar machen des Deploy-Skripts
 RUN curl -Lks https://raw.githubusercontent.com/0x369k/dotfiles/main/.zsh/deploy.sh -o /home/developer/deploy.sh && \
-    chmod +x /home/developer/deploy.sh && \
-    /home/developer/deploy.sh
+    chmod +x /home/developer/deploy.sh
 
 CMD ["/bin/zsh"]
