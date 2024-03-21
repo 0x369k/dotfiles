@@ -81,8 +81,6 @@ deploy_docker() {
   curl -Lks "$DOCKER_COMPOSE_FILE_URL" -o "$TEMP_DIR/docker-compose.yml" || safe_exit "Error downloading docker-compose.yml"
 
   local default_base_image=$(grep 'ARG BASE_IMAGE=' "$TEMP_DIR/Dockerfile" | cut -d'=' -f2)
-  local default_image_name=$(grep 'image: ' "$TEMP_DIR/docker-compose.yml" | awk '{print $2}' | sed 's/"//g' | sed "s/'//g")
-  local default_container_name=$(grep 'container_name: ' "$TEMP_DIR/docker-compose.yml" | awk '{print $2}' | sed 's/"//g' | sed "s/'//g")
 
   # Überprüfe, ob ein benutzerdefiniertes Base-Image übergeben wurde
   if [[ "$base_image" != "$default_base_image" ]]; then
@@ -104,48 +102,54 @@ parse_arguments() {
       --docker)
         DEPLOY_MODE="docker"
         shift
+
         if [[ -n "$1" && "$1" != "--"* ]]; then
           CUSTOM_CONTAINER_NAME="$1"
           shift
         fi
+
         if [[ -n "$1" && "$1" != "--"* ]]; then
-          CUSTOM_IMAGE_NAME="$1"
-          shift
-        fi
-        if [[ -n "$1" && "$1" != "--"* ]]; then
-          CUSTOM_BASE_IMAGE="$1"
-          shift
-        fi
-        ;;
-      --local)
-        DEPLOY_MODE="local"
-        shift
-        ;;
-      *)
-        echo "Unbekanntes Argument: $1"
-        exit 1
-        ;;
-    esac
-  done
+          CUSTOM
+_IMAGE_NAME="$1"
+shift
+fi
+
+    if [[ -n "$1" && "$1" != "--"* ]]; then
+      CUSTOM_BASE_IMAGE="$1"
+      shift
+    fi
+    ;;
+  --local)
+    DEPLOY_MODE="local"
+    shift
+    ;;
+  *)
+    echo "Unbekanntes Argument: $1"
+    exit 1
+    ;;
+esac
+
+done
 }
 
 main() {
-  DEPLOY_MODE="local"
-  parse_arguments "$@"
-  case "${DEPLOY_MODE}" in
-    local)
-      backup_files
-      initialize_and_checkout_dotfiles
-      echo -e "[${GREEN}✔${NC}] Local deployment completed successfully."
-      ;;
-    docker)
-      deploy_docker "${CUSTOM_CONTAINER_NAME:-devcontainer}" "${CUSTOM_IMAGE_NAME:-default_image_name}" "${CUSTOM_BASE_IMAGE:-archlinux:latest}"
-      ;;
-    *)
-      echo -e "[${RED}✘${NC}] Error: Invalid deployment mode: ${DEPLOY_MODE}"
-      exit 1
-      ;;
-  esac
+DEPLOY_MODE="local"
+parse_arguments "$@"
+
+case "${DEPLOY_MODE}" in
+local)
+backup_files
+initialize_and_checkout_dotfiles
+echo -e "[${GREEN}✔${NC}] Local deployment completed successfully."
+;;
+docker)
+deploy_docker "${CUSTOM_CONTAINER_NAME:-devcontainer}" "${CUSTOM_IMAGE_NAME:-default_image_name}" "${CUSTOM_BASE_IMAGE:-archlinux:latest}"
+;;
+*)
+echo -e "[${RED}✘${NC}] Error: Invalid deployment mode: ${DEPLOY_MODE}"
+exit 1
+;;
+esac
 }
 
 main "$@"
