@@ -66,9 +66,9 @@ initialize_and_checkout_dotfiles() {
 }
 
 deploy_docker() {
-  local container_name="${1:-devcontainer}"
-  local image_name="${2:-default_image_name}"
-  local base_image="${3:-archlinux:latest}"
+  local container_name="${CUSTOM_CONTAINER_NAME:-devcontainer}"
+  local image_name="${CUSTOM_IMAGE_NAME:-default_image_name}"
+  local base_image="${CUSTOM_BASE_IMAGE:-archlinux:latest}"
   local current_dir=$(pwd)
 
   echo "Container Name: $container_name"
@@ -80,18 +80,14 @@ deploy_docker() {
   curl -Lks "$DOCKERFILE_URL" -o "$TEMP_DIR/Dockerfile" || safe_exit "Error downloading Dockerfile"
   curl -Lks "$DOCKER_COMPOSE_FILE_URL" -o "$TEMP_DIR/docker-compose.yml" || safe_exit "Error downloading docker-compose.yml"
 
-  local default_base_image=$(grep 'ARG BASE_IMAGE=' "$TEMP_DIR/Dockerfile" | cut -d'=' -f2)
-
-  # Überprüfe, ob ein benutzerdefiniertes Base-Image übergeben wurde
-  if [[ "$base_image" != "$default_base_image" ]]; then
-    sed -i "s|ARG BASE_IMAGE=.*|ARG BASE_IMAGE=$base_image|" "$TEMP_DIR/Dockerfile"
-  fi
-
+  # Anpassen der docker-compose.yml um das übergebene base_image zu verwenden
   sed -i "s|{{IMAGE_NAME}}|$image_name|g" "$TEMP_DIR/docker-compose.yml"
   sed -i "s|{{CONTAINER_NAME}}|$container_name|g" "$TEMP_DIR/docker-compose.yml"
   sed -i "s|- .:/home/developer:cached|- $current_dir:/home/developer/workspace:cached|g" "$TEMP_DIR/docker-compose.yml"
 
-  docker-compose -f "$TEMP_DIR/docker-compose.yml" up -d --build || safe_exit "Failed to start Docker container"
+  # Hier fügen wir die --build-arg Option hinzu, um das benutzerdefinierte Base-Image zu setzen
+  docker-compose -f "$TEMP_DIR/docker-compose.yml" build --build-arg BASE_IMAGE="$base_image" || safe_exit "Failed to build Docker image"
+  docker-compose -f "$TEMP_DIR/docker-compose.yml" up -d || safe_exit "Failed to start Docker container"
   echo "Docker container $container_name started. You can enter with 'docker exec -it $container_name /usr/bin/zsh'"
   rm -rf "$TEMP_DIR"
 }
@@ -99,55 +95,55 @@ deploy_docker() {
 parse_arguments() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      --docker)
-        DEPLOY_MODE="docker"
+    --docker)
+      DEPLOY_MODE="docker"
+      shift
+
+      if [[ -n "$1" && "$1" != "--"* ]]; then
+        CUSTOM_CONTAINER_NAME="$1"
         shift
+      fi
 
-        if [[ -n "$1" && "$1" != "--"* ]]; then
-          CUSTOM_CONTAINER_NAME="$1"
-          shift
-        fi
-
-        if [[ -n "$1" && "$1" != "--"* ]]; then
-          CUSTOM_IMAGE_NAME="$1"
-          shift
-        fi
-
-        if [[ -n "$1" && "$1" != "--"* ]]; then
-          CUSTOM_BASE_IMAGE="$1"
-          shift
-        fi
-        ;;
-      --local)
-        DEPLOY_MODE="local"
+      if [[ -n "$1" && "$1" != "--"* ]]; then
+        CUSTOM_IMAGE_NAME="$1"
         shift
-        ;;
-      *)
-        echo "Unbekanntes Argument: $1"
-        exit 1
-        ;;
+      fi
+
+      if [[ -n "$1" && "$1" != "--"* ]]; then
+        CUSTOM_BASE_IMAGE="$1"
+        shift
+      fi
+      ;;
+    --local)
+      DEPLOY_MODE="local"
+      shift
+      ;;
+    *)
+      echo "Unbekanntes Argument: $1"
+      exit 1
+      ;;
     esac
   done
 }
 
 main() {
-DEPLOY_MODE="local"
-parse_arguments "$@"
+  DEPLOY_MODE="local"
+  parse_arguments "$@"
 
-case "${DEPLOY_MODE}" in
-local)
-backup_files
-initialize_and_checkout_dotfiles
-echo -e "[${GREEN}✔${NC}] Local deployment completed successfully."
-;;
-docker)
-deploy_docker "${CUSTOM_CONTAINER_NAME:-devcontainer}" "${CUSTOM_IMAGE_NAME:-default_image_name}" "${CUSTOM_BASE_IMAGE:-archlinux:latest}"
-;;
-*)
-echo -e "[${RED}✘${NC}] Error: Invalid deployment mode: ${DEPLOY_MODE}"
-exit 1
-;;
-esac
+  case "${DEPLOY_MODE}" in
+  local)
+    backup_files
+    initialize_and_checkout_dotfiles
+    echo -e "[${GREEN}✔${NC}] Local deployment completed successfully."
+    ;;
+  docker)
+    deploy_docker "${CUSTOM_CONTAINER_NAME:-devcontainer}" "${CUSTOM_IMAGE_NAME:-default_image_name}" "${CUSTOM_BASE_IMAGE:-archlinux:latest}"
+    ;;
+  *)
+    echo -e "[${RED}✘${NC}] Error: Invalid deployment mode: ${DEPLOY_MODE}"
+    exit 1
+    ;;
+  esac
 }
 
 main "$@"
