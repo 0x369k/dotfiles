@@ -142,6 +142,11 @@ log "Set volume mount to: $current_dir:/home/developer/workspace:cached"
     rm -rf "$TEMP_DIR"
 }
 
+get_container_name() {
+    local container_name=$(docker ps --latest --quiet)
+    echo "$container_name"
+}
+
 enter_container() {
     local container_name="$1"
     docker exec -it "$container_name" /usr/bin/zsh
