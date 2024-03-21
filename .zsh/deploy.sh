@@ -109,27 +109,25 @@ parse_arguments() {
         fi
 
         if [[ -n "$1" && "$1" != "--"* ]]; then
-          CUSTOM
-_IMAGE_NAME="$1"
-shift
-fi
+          CUSTOM_IMAGE_NAME="$1"
+          shift
+        fi
 
-    if [[ -n "$1" && "$1" != "--"* ]]; then
-      CUSTOM_BASE_IMAGE="$1"
-      shift
-    fi
-    ;;
-  --local)
-    DEPLOY_MODE="local"
-    shift
-    ;;
-  *)
-    echo "Unbekanntes Argument: $1"
-    exit 1
-    ;;
-esac
-
-done
+        if [[ -n "$1" && "$1" != "--"* ]]; then
+          CUSTOM_BASE_IMAGE="$1"
+          shift
+        fi
+        ;;
+      --local)
+        DEPLOY_MODE="local"
+        shift
+        ;;
+      *)
+        echo "Unbekanntes Argument: $1"
+        exit 1
+        ;;
+    esac
+  done
 }
 
 main() {
