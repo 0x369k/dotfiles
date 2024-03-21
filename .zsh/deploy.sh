@@ -80,16 +80,21 @@ deploy_docker() {
   curl -Lks "$DOCKERFILE_URL" -o "$TEMP_DIR/Dockerfile" || safe_exit "Error downloading Dockerfile"
   curl -Lks "$DOCKER_COMPOSE_FILE_URL" -o "$TEMP_DIR/docker-compose.yml" || safe_exit "Error downloading docker-compose.yml"
 
+  local default_base_image=$(grep 'ARG BASE_IMAGE=' "$TEMP_DIR/Dockerfile" | cut -d'=' -f2)
   local default_image_name=$(grep 'image: ' "$TEMP_DIR/docker-compose.yml" | awk '{print $2}' | sed 's/"//g' | sed "s/'//g")
   local default_container_name=$(grep 'container_name: ' "$TEMP_DIR/docker-compose.yml" | awk '{print $2}' | sed 's/"//g' | sed "s/'//g")
 
+  # Überprüfe, ob ein benutzerdefiniertes Base-Image übergeben wurde
+  if [[ "$base_image" != "$default_base_image" ]]; then
+    sed -i "s|ARG BASE_IMAGE=.*|ARG BASE_IMAGE=$base_image|" "$TEMP_DIR/Dockerfile"
+  fi
+
   sed -i "s|{{IMAGE_NAME}}|$image_name|g" "$TEMP_DIR/docker-compose.yml"
   sed -i "s|{{CONTAINER_NAME}}|$container_name|g" "$TEMP_DIR/docker-compose.yml"
-  sed -i "s|{{BASE_IMAGE}}|$base_image|g" "$TEMP_DIR/docker-compose.yml"
   sed -i "s|- .:/home/developer:cached|- $current_dir:/home/developer/workspace:cached|g" "$TEMP_DIR/docker-compose.yml"
 
   docker-compose -f "$TEMP_DIR/docker-compose.yml" up -d --build || safe_exit "Failed to start Docker container"
-  echo "Docker container $container_name started. You can enter with 'docker exec -it $container_name /bin/bash'"
+  echo "Docker container $container_name started. You can enter with 'docker exec -it $container_name /usr/bin/zsh'"
   rm -rf "$TEMP_DIR"
 }
 
