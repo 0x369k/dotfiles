@@ -1,4 +1,3 @@
-# Basis-Image dynamisch über Build-Argument festlegen
 ARG BASE_IMAGE=archlinux:latest
 FROM $BASE_IMAGE
 
