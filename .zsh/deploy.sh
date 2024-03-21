@@ -94,41 +94,50 @@ deploy_docker() {
 }
 
 parse_arguments() {
-  while [[ $# -gt 0 ]]; do
-    case "$1" in
-      --local)
-        deploy_mode="local"
-        shift
-        ;;
-      --docker)
-        deploy_mode="docker"
-        container_name="${2:-devcontainer}"
-        image_name="${3:-default_image_name}"
-        base_image="${4:-archlinux:latest}"
-        shift 4
-        ;;
-      *)
-        safe_exit "Invalid argument: $1"
-        ;;
-    esac
-  done
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --docker)
+                DEPLOY_MODE="docker"
+                if [[ -n "$2" && "$2" != "--"* ]]; then
+                    CUSTOM_CONTAINER_NAME="$2"
+                    shift
+                fi
+                if [[ -n "$3" && "$3" != "--"* ]]; then
+                    CUSTOM_IMAGE_NAME="$3"
+                    shift
+                fi
+                if [[ -n "$4" && "$4" != "--"* ]]; then
+                    CUSTOM_BASE_IMAGE="$4"
+                    shift
+                fi
+                shift
+                ;;
+            --local)
+                DEPLOY_MODE="local"
+                ;;
+            *)
+                echo "Unbekanntes Argument: $1"
+                exit 1
+                ;;
+        esac
+    done
 }
 
 main() {
   parse_arguments "$@"
 
   case "${deploy_mode}" in
-    local)
-      backup_files
-      initialize_and_checkout_dotfiles
-      echo -e "[${GREEN}✔${NC}] Local deployment completed successfully."
-      ;;
-    docker)
-      deploy_docker "${container_name}" "${image_name}" "${base_image}"
-      ;;
-    *)
-      safe_exit "Invalid deployment mode: ${deploy_mode}"
-      ;;
+  local)
+    backup_files
+    initialize_and_checkout_dotfiles
+    echo -e "[${GREEN}✔${NC}] Local deployment completed successfully."
+    ;;
+  docker)
+    deploy_docker "${container_name}" "${image_name}" "${base_image}"
+    ;;
+  *)
+    safe_exit "Invalid deployment mode: ${deploy_mode}"
+    ;;
   esac
 }
 
