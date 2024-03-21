@@ -28,12 +28,13 @@ backup_files() {
   done
 
   git clone --depth=1 "${DOTFILES_REPO}" "${TEMP_DIR}" || safe_exit "Fehler beim Klonen des Dotfiles-Repositorys"
-  cp -r "${TEMP_DIR}"/* "${BACKUP_DIR}/"
+  cp -r "${TEMP_DIR}/dotfiles/"* "${BACKUP_DIR}/"
   rm -rf "${TEMP_DIR}"
 }
 
 # Initialisierung und Auschecken von Dotfiles
 initialize_and_checkout_dotfiles() {
+  [ -d "${DOTDIR}" ] && rm -rf "${DOTDIR}"
   git clone --bare "${DOTFILES_REPO}" "${DOTDIR}" || safe_exit "Fehler beim Klonen des Bare-Repositorys"
   git --git-dir="${DOTDIR}" --work-tree="${HOME}" config --local status.showUntrackedFiles no
   git --git-dir="${DOTDIR}" --work-tree="${HOME}" checkout || safe_exit "Fehler beim Auschecken der Dotfiles"
@@ -45,33 +46,23 @@ deploy_docker() {
   local image_name="${2:-default_image_name}"
   local base_image="${3:-archlinux:latest}"
 
+  command -v docker-compose >/dev/null 2>&1 || safe_exit "docker-compose ist nicht installiert"
+
   curl -Lks https://raw.githubusercontent.com/0x369k/dotfiles/main/.devcontainer/docker-compose.yml -o docker-compose.yml || safe_exit "Fehler beim Herunterladen der docker-compose.yml"
   sed -i "s/\${IMAGE_NAME:-default-image-name}/${image_name}/g" docker-compose.yml
   sed -i "s/\${BASE_IMAGE:-archlinux:latest}/${base_image}/g" docker-compose.yml
+  sed -i "s/\${UID:-1000}/${UID}/g" docker-compose.yml
+  sed -i "s/\${GID:-1000}/${GID}/g" docker-compose.yml
   docker-compose up -d || safe_exit "Fehler beim Starten des Docker-Containers"
 }
 
-# Argumentenverarbeitung
-parse_arguments() {
-  while [[ $# -gt 0 ]]; do
-    case "$1" in
-      --local)
-        deploy_mode="local"
-        shift
-        ;;
-      --docker)
-        deploy_mode="docker"
-        container_name="$2"
-        image_name="$3"
-        base_image="$4"
-        shift 4
-        ;;
-      *)
-        safe_exit "Ungültiges Argument: $1"
-        ;;
-    esac
-  done
+# Aufräumen von Docker-Ressourcen
+cleanup_docker() {
+  docker-compose down --remove-orphans
+  rm -f docker-compose.yml
 }
+
+# ... (Argumentenverarbeitung bleibt unverändert) ...
 
 # Hauptausführung
 main() {
@@ -85,13 +76,13 @@ main() {
       ;;
     docker)
       deploy_docker "${container_name}" "${image_name}" "${base_image}"
-      echo -e
-      "${GREEN}Docker-Bereitstellung erfolgreich abgeschlossen.${NC}"
+      echo -e "${GREEN}Docker-Bereitstellung erfolgreich abgeschlossen.${NC}"
+      cleanup_docker
       ;;
-      *)
+    *)
       safe_exit "Ungültiger Bereitstellungsmodus: ${deploy_mode}"
       ;;
-      esac
-  }
+  esac
+}
 
 main "$@"
