@@ -1,8 +1,6 @@
 ARG BASE_IMAGE=archlinux:latest
 FROM $BASE_IMAGE
 
-set -e
-
 # Update System und installiere benötigte Pakete
 RUN pacman -Syu --noconfirm && \
     pacman -S --noconfirm --no-install-recommends base-devel git zsh vim nano tree curl wget man-db man-pages texinfo iproute2 htop python python-pip go openssh && \
