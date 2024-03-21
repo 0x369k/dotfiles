@@ -1,11 +1,11 @@
 ARG BASE_IMAGE=archlinux:latest
 FROM $BASE_IMAGE
 
-# Update System und installiere benötigte Pakete
-RUN pacman -Syu --noconfirm && \
-    pacman -S --noconfirm --no-install-recommends base-devel git zsh vim nano tree curl wget man-db man-pages texinfo iproute2 htop python python-pip go openssh && \
-    pacman -Scc --noconfirm && \
-    rm -rf /var/lib/pacman/sync/* /var/cache/pacman/pkg/*
+# Kopieren des Wrapper-Skripts in den Container
+COPY package_manager_wrapper.sh /usr/local/bin/
+
+# Installieren der benötigten Pakete mit dem Wrapper-Skript
+RUN package_manager_wrapper.sh base-devel git zsh vim nano tree curl wget man-db man-pages texinfo iproute2 htop python python-pip go openssh
 
 # Erstelle einen neuen Benutzer 'developer' mit Zsh als Standard-Shell
 RUN useradd -m -s /usr/bin/zsh developer && \
