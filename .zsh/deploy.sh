@@ -65,10 +65,21 @@ initialize_and_checkout_dotfiles() {
   echo -e "[${GREEN}✔${NC}] Dotfiles checked out successfully."
 }
 
+load_config() {
+  if [ -f "./dotfiles.env" ]; then
+    echo -e "[${BLUE}i${NC}] Loading configuration from ./dotfiles.env"
+    source "./dotfiles.env"
+  else
+    echo -e "[${YELLOW}i${NC}] Local configuration not found, downloading from repository"
+    curl -Lks "https://raw.githubusercontent.com/0x369k/dotfiles/main/dotfiles.env" -o "./dotfiles.env" || safe_exit "Error downloading dotfiles.env"
+    source "./dotfiles.env"
+  fi
+}
+
 deploy_docker() {
-  local container_name="${CUSTOM_CONTAINER_NAME:-devcontainer}"
-  local image_name="${CUSTOM_IMAGE_NAME:-default_image_name}"
-  local base_image="${CUSTOM_BASE_IMAGE:-archlinux:latest}"
+  local container_name="${CUSTOM_CONTAINER_NAME}"
+  local image_name="${CUSTOM_IMAGE_NAME}"
+  local base_image="${CUSTOM_BASE_IMAGE}"
   local current_dir=$(pwd)
 
   echo "Container Name: $container_name"
@@ -97,40 +108,28 @@ deploy_docker() {
 parse_arguments() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
-    --docker)
-      DEPLOY_MODE="docker"
-      shift
-
-      if [[ -n "$1" && "$1" != "--"* ]]; then
-        CUSTOM_CONTAINER_NAME="$1"
+      --docker)
+        DEPLOY_MODE="docker"
         shift
-      fi
-
-      if [[ -n "$1" && "$1" != "--"* ]]; then
-        CUSTOM_IMAGE_NAME="$1"
+        ;;
+      --local)
+        DEPLOY_MODE="local"
         shift
-      fi
-
-      if [[ -n "$1" && "$1" != "--"* ]]; then
-        CUSTOM_BASE_IMAGE="$1"
-        shift
-      fi
-      ;;
-    --local)
-      DEPLOY_MODE="local"
-      shift
-      ;;
-    *)
-      echo "Unbekanntes Argument: $1"
-      exit 1
-      ;;
+        ;;
+      *)
+        echo "Unbekanntes Argument: $1"
+        exit 1
+        ;;
     esac
   done
 }
 
+
 main() {
   DEPLOY_MODE="local"
+  load_config
   parse_arguments "$@"
+
 
   case "${DEPLOY_MODE}" in
   local)
