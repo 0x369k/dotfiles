@@ -68,7 +68,7 @@ initialize_and_checkout_dotfiles() {
 deploy_docker() {
   local container_name="${CUSTOM_CONTAINER_NAME:-devcontainer}"
   local image_name="${CUSTOM_IMAGE_NAME:-default_image_name}"
-  local base_image="${CUSTOM_BASE_IMAGE:-archlinux:latest}"
+  local base_image="${DOCKER_BUILD_BASE_IMAGE:-archlinux:latest}"  # Read from environment variable
   local current_dir=$(pwd)
 
   echo "Container Name: $container_name"
