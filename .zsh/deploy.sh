@@ -1,19 +1,16 @@
 #!/usr/bin/env bash
 
-# Color definitions
 GREEN='\033[0;32m'
 RED='\033[0;31m'
 YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-# Paths and default values
 DOTFILES_REPO="https://github.com/0x369k/dotfiles.git"
 DOTDIR="${HOME}/.dotfiles"
 BACKUP_DIR="${HOME}/.dotfiles_backup/$(date +%Y-%m-%d_%H-%M-%S)"
 TEMP_DIR="/tmp/dotfiles_temp"
 
-# Safe exit function
 safe_exit() {
   local message="$1"
   echo -e "[${RED}✘${NC}] Error: ${message}"
@@ -21,7 +18,6 @@ safe_exit() {
   exit 1
 }
 
-# Backup files function
 backup_files() {
   echo -e "[${BLUE}i${NC}] Creating backup directory: ${BACKUP_DIR}"
   mkdir -p "${BACKUP_DIR}"
@@ -58,7 +54,6 @@ backup_files() {
   rm -rf "${TEMP_DIR}"
 }
 
-# Initialize and checkout dotfiles function
 initialize_and_checkout_dotfiles() {
   if [ -d "${DOTDIR}" ]; then
     echo -e "[${YELLOW}i${NC}] Moving existing ${DOTDIR} to backup directory..."
@@ -77,7 +72,6 @@ initialize_and_checkout_dotfiles() {
   echo -e "[${GREEN}✔${NC}] Dotfiles checked out successfully."
 }
 
-# Deploy in a Docker container function
 deploy_docker() {
   local container_name="${1:-devcontainer}"
   local image_name="${2:-default_image_name}"
@@ -99,7 +93,6 @@ deploy_docker() {
   echo -e "You can enter the container with ${YELLOW}docker exec -it ${container_name} /usr/bin/zsh${NC}"
 }
 
-# Parse arguments function
 parse_arguments() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -121,7 +114,6 @@ parse_arguments() {
   done
 }
 
-# Main execution function
 main() {
   parse_arguments "$@"
 
