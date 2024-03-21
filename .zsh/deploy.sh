@@ -68,7 +68,7 @@ initialize_and_checkout_dotfiles() {
 deploy_docker() {
   local container_name="${CUSTOM_CONTAINER_NAME:-devcontainer}"
   local image_name="${CUSTOM_IMAGE_NAME:-default_image_name}"
-  local base_image="${DOCKER_BUILD_BASE_IMAGE:-archlinux:latest}"  # Read from environment variable
+  local base_image="${CUSTOM_BASE_IMAGE:-archlinux:latest}"
   local current_dir=$(pwd)
 
   echo "Container Name: $container_name"
@@ -86,6 +86,7 @@ deploy_docker() {
   sed -i "s|- .:/home/developer:cached|- $current_dir:/home/developer/workspace:cached|g" "$TEMP_DIR/docker-compose.yml"
 
   # Hier fügen wir die --build-arg Option hinzu, um das benutzerdefinierte Base-Image zu setzen
+  echo "Using base image: $base_image"
   docker-compose -f "$TEMP_DIR/docker-compose.yml" build --build-arg BASE_IMAGE="$base_image" || safe_exit "Failed to build Docker image"
   docker-compose -f "$TEMP_DIR/docker-compose.yml" up -d || safe_exit "Failed to start Docker container"
   echo "Docker container $container_name started. You can enter with 'docker exec -it $container_name /usr/bin/zsh'"
