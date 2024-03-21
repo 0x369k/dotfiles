@@ -100,33 +100,33 @@ deploy_docker() {
 }
 
 parse_arguments() {
-    while [[ $# -gt 0 ]]; do
-        case "$1" in
-            --docker)
-                DEPLOY_MODE="docker"
-                if [[ -n "$2" && "$2" != "--"* ]]; then
-                    CUSTOM_CONTAINER_NAME="$2"
-                    shift
-                fi
-                if [[ -n "$3" && "$3" != "--"* ]]; then
-                    CUSTOM_IMAGE_NAME="$3"
-                    shift
-                fi
-                if [[ -n "$4" && "$4" != "--"* ]]; then
-                    CUSTOM_BASE_IMAGE="$4"
-                    shift
-                fi
-                shift
-                ;;
-            --local)
-                DEPLOY_MODE="local"
-                ;;
-            *)
-                echo "Unbekanntes Argument: $1"
-                exit 1
-                ;;
-        esac
-    done
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --docker)
+        DEPLOY_MODE="docker"
+        shift # Entferne --docker aus der Argumentenliste
+        if [[ -n "$1" && "$1" != "--"* ]]; then
+          CUSTOM_CONTAINER_NAME="$1"
+          shift
+        fi
+        if [[ -n "$1" && "$1" != "--"* ]]; then
+          CUSTOM_IMAGE_NAME="$1"
+          shift
+        fi
+        if [[ -n "$1" && "$1" != "--"* ]]; then
+          CUSTOM_BASE_IMAGE="$1"
+          shift
+        fi
+        ;;
+      --local)
+        DEPLOY_MODE="local"
+        ;;
+      *)
+        echo "Unbekanntes Argument: $1"
+        exit 1
+        ;;
+    esac
+  done
 }
 
 main() {
