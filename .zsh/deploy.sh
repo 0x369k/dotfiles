@@ -7,6 +7,7 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 DOTFILES_REPO="https://github.com/0x369k/dotfiles.git"
+DOCKER_COMPOSE_FILE_URL="https://raw.githubusercontent.com/0x369k/dotfiles/main/.devcontainer/docker-compose.yml"
 DOTDIR="${HOME}/.dotfiles"
 BACKUP_DIR="${HOME}/.dotfiles_backup/$(date +%Y-%m-%d_%H-%M-%S)"
 TEMP_DIR="/tmp/dotfiles_temp"
@@ -74,15 +75,24 @@ initialize_and_checkout_dotfiles() {
 
 # Funktion deploy_docker() überarbeiten:
 deploy_docker() {
+    if [ ! -f "Dockerfile" ]; then
+    echo -e "[${RED}✘${NC}] Error: Dockerfile not found in the current directory."
+    exit 1
+  fi
+
+  if [ ! -f "docker-compose.yml" ]; then
+    echo -e "[${RED}✘${NC}] Error: docker-compose.yml not found in the current directory."
+    exit 1
+  fi
   # Lese Standardwerte aus Docker-Dateien
   local default_base_image=$(grep 'ARG BASE_IMAGE=' Dockerfile | cut -d'=' -f2)
   local default_image_name=$(grep 'image: ' docker-compose.yml | awk '{print $2}' | sed 's/"//g' | sed "s/'//g")
   local default_container_name=$(grep 'container_name: ' docker-compose.yml | awk '{print $2}' | sed 's/"//g' | sed "s/'//g")
 
   # Argumente oder Standardwerte nutzen
-  local container_name="${1:-$default_container_name}"
-  local image_name="${2:-$default_image_name}"
-  local base_image="${3:-$default_base_image}"
+  local default_base_image=$(grep 'ARG BASE_IMAGE=' Dockerfile | cut -d'=' -f2)
+  local default_image_name=$(grep 'image: ' docker-compose.yml | awk '{print $2}' | sed 's/"//g' | sed "s/'//g")
+  local default_container_name=$(grep 'container_name: ' docker-compose.yml | awk '{print $2}' | sed 's/"//g' | sed "s/'//g")
   local current_dir=$(pwd)
 
   # Bereite docker-compose.yml vor
