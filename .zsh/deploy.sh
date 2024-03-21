@@ -70,6 +70,11 @@ deploy_docker() {
   local image_name="${2:-default_image_name}"
   local base_image="${3:-archlinux:latest}"
   local current_dir=$(pwd)
+  
+  echo "Container Name: $container_name"
+  echo "Image Name: $image_name"
+  echo "Base Image: $base_image"
+  echo "Current Directory: $current_dir"
 
   mkdir -p "$TEMP_DIR"
   curl -Lks "$DOCKERFILE_URL" -o "$TEMP_DIR/Dockerfile" || safe_exit "Error downloading Dockerfile"
