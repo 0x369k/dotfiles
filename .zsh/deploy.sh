@@ -102,9 +102,9 @@ parse_arguments() {
         ;;
       --docker)
         deploy_mode="docker"
-        container_name="$2"
-        image_name="$3"
-        base_image="$4"
+        container_name="${2:-devcontainer}"
+        image_name="${3:-default_image_name}"
+        base_image="${4:-archlinux:latest}"
         shift 4
         ;;
       *)
