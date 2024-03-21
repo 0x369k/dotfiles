@@ -12,7 +12,6 @@ DOTDIR="${HOME}/.dotfiles"
 BACKUP_DIR="${HOME}/.dotfiles_backup/$(date +%Y-%m-%d_%H-%M-%S)"
 TEMP_DIR="/tmp/dotfiles_temp"
 
-# Sicherer Exit
 safe_exit() {
   local message="$1"
   echo -e "${RED}Fehler: ${message}${NC}"
@@ -62,9 +61,28 @@ cleanup_docker() {
   rm -f docker-compose.yml
 }
 
-# ... (Argumentenverarbeitung bleibt unverändert) ...
+# Argumentenverarbeitung
+parse_arguments() {
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+        --local)
+            deploy_mode="local"
+            shift
+            ;;
+        --docker)
+            deploy_mode="docker"
+            container_name="$2"
+            image_name="$3"
+            base_image="$4"
+            shift 4
+            ;;
+        *)
+            safe_exit "Ungültiges Argument: $1"
+            ;;
+        esac
+    done
+}
 
-# Hauptausführung
 main() {
   parse_arguments "$@"
 
