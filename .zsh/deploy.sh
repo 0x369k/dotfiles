@@ -120,25 +120,23 @@ deploy_docker() {
     log "[${GREEN}✔${NC}] Downloaded package_manager_wrapper.sh"
 
     local default_base_image=$(grep 'ARG BASE_IMAGE=' "$TEMP_DIR/Dockerfile" | cut -d'=' -f2)
+    if [[ "$base_image" != "$default_base_image" ]]; then
+        sed -i "s|ARG BASE_IMAGE=.*|ARG BASE_IMAGE=$base_image|" "$TEMP_DIR/Dockerfile"
+        log "Customized base image: $base_image"
+    fi
 
-if [[ "$base_image" != "$default_base_image" ]]; then
-    sed -i "s|ARG BASE_IMAGE=.*|ARG BASE_IMAGE=$base_image|" "$TEMP_DIR/Dockerfile"
-    log "Customized base image: $base_image"
-fi
-
-sed -i "s|{{IMAGE_NAME}}|$image_name|g" "$TEMP_DIR/docker-compose.yml"
-log "Set image name to: $image_name"
-sed -i "s|{{CONTAINER_NAME}}|$container_name|g" "$TEMP_DIR/docker-compose.yml"
-log "Set container name to: $container_name"
-sed -i "s|- .:/home/developer:cached|- $current_dir:/home/developer/workspace:cached|g" "$TEMP_DIR/docker-compose.yml"
-log "Set volume mount to: $current_dir:/home/developer/workspace:cached"
+    sed -i "s|{{IMAGE_NAME}}|$image_name|g" "$TEMP_DIR/docker-compose.yml"
+    log "Set image name to: $image_name"
+    sed -i "s|{{CONTAINER_NAME}}|$container_name|g" "$TEMP_DIR/docker-compose.yml"
+    log "Set container name to: $container_name"
+    sed -i "s|- .:/home/developer:cached|- $current_dir:/home/developer/workspace:cached|g" "$TEMP_DIR/docker-compose.yml"
+    log "Set volume mount to: $current_dir:/home/developer/workspace:cached"
 
     docker-compose -f "$TEMP_DIR/docker-compose.yml" up -d --build || safe_exit "Failed to start Docker container"
     local container_name=$(get_container_name)
-    local image_name=$(docker inspect --format='{{.RepoTags}}' "$container_name" | sed 's/\[//' | sed 's/\]//')
-    log "[${GREEN}✔${NC}] Docker container $container_name started with image $image_name."
-    echo "Docker container $container_name started with image $image_name. You can enter with 'docker exec -it $container_name /usr/bin/zsh'"
-
+    local image_name=$(docker inspect --format='{{.Config.Image}}' "$container_name")
+    log "[${GREEN}✔${NC}] Docker container $container_name started with image $image_name"
+    echo "Docker container $container_name started. You can enter with 'docker exec -it $container_name /usr/bin/zsh'"
     rm -rf "$TEMP_DIR"
 }
 
@@ -182,17 +180,18 @@ main() {
             initialize_and_checkout_dotfiles
             echo -e "[${GREEN}✔${NC}] Local deployment completed successfully."
             log "[${GREEN}✔${NC}] Local deployment completed successfully."
-            ;;
-              docker)
+        ;;
+        docker)
             deploy_docker "${CUSTOM_CONTAINER_NAME:-devcontainer}" "${CUSTOM_IMAGE_NAME:-default_image_name}" "${CUSTOM_BASE_IMAGE:-archlinux:latest}"
             local container_name=$(get_container_name)
+            echo "Docker container $container_name started. You can enter with 'docker exec -it $container_name /usr/bin/zsh'"
             enter_container "$container_name"
-            ;;
+        ;;
         *)
             echo -e "[${RED}✘${NC}] Error: Invalid deployment mode: ${DEPLOY_MODE}"
             log "[${RED}✘${NC}] Error: Invalid deployment mode: ${DEPLOY_MODE}"
             exit 1
-            ;;
+        ;;
     esac
 }
 
