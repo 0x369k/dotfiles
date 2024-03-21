@@ -75,15 +75,6 @@ initialize_and_checkout_dotfiles() {
 
 # Funktion deploy_docker() überarbeiten:
 deploy_docker() {
-    if [ ! -f "Dockerfile" ]; then
-    echo -e "[${RED}✘${NC}] Error: Dockerfile not found in the current directory."
-    exit 1
-  fi
-
-  if [ ! -f "docker-compose.yml" ]; then
-    echo -e "[${RED}✘${NC}] Error: docker-compose.yml not found in the current directory."
-    exit 1
-  fi
   # Lese Standardwerte aus Docker-Dateien
   local default_base_image=$(grep 'ARG BASE_IMAGE=' Dockerfile | cut -d'=' -f2)
   local default_image_name=$(grep 'image: ' docker-compose.yml | awk '{print $2}' | sed 's/"//g' | sed "s/'//g")
