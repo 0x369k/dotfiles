@@ -41,6 +41,20 @@ backup_files() {
     fi
   done < <(find "${TEMP_DIR}" -type f -print0)
 
+  for dir in ".zi"; do
+    if [ -d "${HOME}/${dir}" ]; then
+      echo -e "[${YELLOW}i${NC}] Backing up directory: ${HOME}/${dir}"
+      mv "${HOME}/${dir}" "${BACKUP_DIR}/"
+    fi
+  done
+
+  for file in ".zshrc" ".zshenv" ".zprofile" ".zlogin" ".zlogout" ".zsh_history"; do
+    if [ -e "${HOME}/${file}" ]; then
+      echo -e "[${YELLOW}i${NC}] Backing up file: ${HOME}/${file}"
+      mv "${HOME}/${file}" "${BACKUP_DIR}/"
+    fi
+  done
+
   rm -rf "${TEMP_DIR}"
 }
 
@@ -80,7 +94,7 @@ deploy_docker() {
   sed -i "s/\${BASE_IMAGE:-archlinux:latest}/${base_image}/g" docker-compose.yml
 
   echo -e "[${BLUE}i${NC}] Starting Docker container..."
-  docker-compose up -d || safe_exit "Error while starting the Docker container"
+  docker-compose up -d --build || safe_exit "Error while starting the Docker container"
   echo -e "[${GREEN}✔${NC}] Docker container started successfully."
   echo -e "You can enter the container with ${YELLOW}docker exec -it ${container_name} /usr/bin/zsh${NC}"
 }
@@ -121,7 +135,8 @@ main() {
       deploy_docker "${container_name}" "${image_name}" "${base_image}"
       ;;
     *)
-      safe_exit "Invalid deployment mode: ${deploy_mode}"      ;;
+      safe_exit "Invalid deployment mode: ${deploy_mode}"
+      ;;
   esac
 }
 
