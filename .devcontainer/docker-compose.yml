@@ -5,7 +5,7 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        BASE_IMAGE: "${BASE_IMAGE:-archlinux:latest}"
+  BASE_IMAGE: "${BASE_IMAGE:-archlinux:latest}"
     image: "${IMAGE_NAME:-default-image-name}"
     container_name: "${CONTAINER_NAME:-default-container-name}"
     volumes:
