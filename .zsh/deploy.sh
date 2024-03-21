@@ -16,37 +16,32 @@ TEMP_DIR="/tmp/dotfiles_temp"
 # Safe exit function
 safe_exit() {
   local message="$1"
-  echo -e "${RED}Error: ${message}${NC}"
+  echo -e "[${RED}✘${NC}] Error: ${message}"
   [ -d "${TEMP_DIR}" ] && rm -rf "${TEMP_DIR}"
   exit 1
 }
 
 # Backup files function
 backup_files() {
-  echo -e "${BLUE}Creating backup directory: ${BACKUP_DIR}${NC}"
+  echo -e "[${BLUE}i${NC}] Creating backup directory: ${BACKUP_DIR}"
   mkdir -p "${BACKUP_DIR}"
 
-  for dir in ".zi" ".zsh" ".dotfiles"; do
-    if [ -d "${HOME}/${dir}" ]; then
-      echo -e "${YELLOW}Backing up directory: ${HOME}/${dir}${NC}"
-      mv "${HOME}/${dir}" "${BACKUP_DIR}/"
-    fi
-  done
-
-  for file in ".zshrc" ".zshenv"; do
-    if [ -e "${HOME}/${file}" ]; then
-      echo -e "${YELLOW}Backing up file: ${HOME}/${file}${NC}"
-      mv "${HOME}/${file}" "${BACKUP_DIR}/"
-    fi
-  done
-
-  echo -e "${BLUE}Cloning dotfiles repository...${NC}"
+  echo -e "[${BLUE}i${NC}] Cloning dotfiles repository..."
   git clone --depth=1 "${DOTFILES_REPO}" "${TEMP_DIR}" || safe_exit "Error while cloning the dotfiles repository"
-  echo -e "${GREEN}Dotfiles repository cloned successfully.${NC}"
+  echo -e "[${GREEN}✔${NC}] Dotfiles repository cloned successfully."
 
-  echo -e "${BLUE}Copying dotfiles to backup directory...${NC}"
-  cp -r "${TEMP_DIR}"/* "${BACKUP_DIR}/"
-  echo -e "${GREEN}Dotfiles copied to backup directory successfully.${NC}"
+  cd "${TEMP_DIR}" || safe_exit "Error while navigating to the temporary directory"
+
+  while IFS= read -r -d '' file; do
+    relative_path="${file#"${TEMP_DIR}/"}"
+    target_dir="${BACKUP_DIR}/$(dirname "${relative_path}")"
+    mkdir -p "${target_dir}"
+
+    if [ -e "${HOME}/${relative_path}" ]; then
+      echo -e "[${YELLOW}i${NC}] Backing up: ${HOME}/${relative_path}"
+      mv "${HOME}/${relative_path}" "${target_dir}/"
+    fi
+  done < <(find "${TEMP_DIR}" -type f -print0)
 
   rm -rf "${TEMP_DIR}"
 }
@@ -54,20 +49,20 @@ backup_files() {
 # Initialize and checkout dotfiles function
 initialize_and_checkout_dotfiles() {
   if [ -d "${DOTDIR}" ]; then
-    echo -e "${YELLOW}Moving existing ${DOTDIR} to backup directory...${NC}"
+    echo -e "[${YELLOW}i${NC}] Moving existing ${DOTDIR} to backup directory..."
     mv "${DOTDIR}" "${BACKUP_DIR}/"
-    echo -e "${GREEN}Existing ${DOTDIR} moved to backup directory successfully.${NC}"
+    echo -e "[${GREEN}✔${NC}] Existing ${DOTDIR} moved to backup directory successfully."
   fi
 
-  echo -e "${BLUE}Cloning bare repository...${NC}"
+  echo -e "[${BLUE}i${NC}] Cloning bare repository..."
   git clone --bare "${DOTFILES_REPO}" "${DOTDIR}" || safe_exit "Error while cloning the bare repository"
-  echo -e "${GREEN}Bare repository cloned successfully.${NC}"
+  echo -e "[${GREEN}✔${NC}] Bare repository cloned successfully."
 
   git --git-dir="${DOTDIR}" --work-tree="${HOME}" config --local status.showUntrackedFiles no
 
-  echo -e "${BLUE}Checking out dotfiles...${NC}"
+  echo -e "[${BLUE}i${NC}] Checking out dotfiles..."
   git --git-dir="${DOTDIR}" --work-tree="${HOME}" checkout || safe_exit "Error while checking out the dotfiles"
-  echo -e "${GREEN}Dotfiles checked out successfully.${NC}"
+  echo -e "[${GREEN}✔${NC}] Dotfiles checked out successfully."
 }
 
 # Deploy in a Docker container function
@@ -79,23 +74,22 @@ deploy_docker() {
   image_name=$(echo "${image_name}" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]')
   base_image=$(echo "${base_image}" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]')
 
-  echo -e "${BLUE}Downloading docker-compose.yml...${NC}"
+  echo -e "[${BLUE}i${NC}] Downloading docker-compose.yml..."
   curl -Lks https://raw.githubusercontent.com/0x369k/dotfiles/main/.devcontainer/docker-compose.yml -o docker-compose.yml || safe_exit "Error while downloading docker-compose.yml"
-  echo -e "${GREEN}docker-compose.yml downloaded successfully.${NC}"
+  echo -e "[${GREEN}✔${NC}] docker-compose.yml downloaded successfully."
 
   sed -i "s/\${IMAGE_NAME:-default-image-name}/${image_name}/g" docker-compose.yml
   sed -i "s/\${BASE_IMAGE:-archlinux:latest}/${base_image}/g" docker-compose.yml
 
-  echo -e "${BLUE}Starting Docker container...${NC}"
+  echo -e "[${BLUE}i${NC}] Starting Docker container..."
   docker-compose up -d || safe_exit "Error while starting the Docker container"
-  echo -e "${GREEN}Docker container started successfully.${NC}"
+  echo -e "[${GREEN}✔${NC}] Docker container started successfully."
   echo -e "You can enter the container with ${YELLOW}docker exec -it ${container_name} /usr/bin/zsh${NC}"
 }
 
 # Parse arguments function
 parse_arguments() {
-  while [[ $# -gt 0 ]]; do
-    case "$1" in
+  while [[ $# -gt 0 ]];    case "$1" in
       --local)
         deploy_mode="local"
         shift
@@ -122,7 +116,7 @@ main() {
     local)
       backup_files
       initialize_and_checkout_dotfiles
-      echo -e "${GREEN}Local deployment completed successfully.${NC}"
+      echo -e "[${GREEN}✔${NC}] Local deployment completed successfully."
       ;;
     docker)
       deploy_docker "${container_name}" "${image_name}" "${base_image}"
