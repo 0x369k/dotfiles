@@ -84,15 +84,18 @@ initialize_and_checkout_dotfiles() {
 }
 
 load_config() {
+    # Lade die Standardwerte aus der Remote-Datei
+    curl -Lks "https://raw.githubusercontent.com/0x369k/dotfiles/main/dotfiles.env" -o "/tmp/dotfiles.env" || safe_exit "Error downloading dotfiles.env"
+    source "/tmp/dotfiles.env"
+
+    # Überschreibe die Standardwerte mit den Werten aus der lokalen Datei, falls vorhanden
     if [ -f "./dotfiles.env" ]; then
         echo -e "[${BLUE}i${NC}] Loading configuration from ./dotfiles.env"
         log "[${BLUE}i${NC}] Loading configuration from ./dotfiles.env"
         source "./dotfiles.env"
     else
-        echo -e "[${YELLOW}i${NC}] Local configuration not found, downloading from repository"
-        log "[${YELLOW}i${NC}] Local configuration not found, downloading from repository"
-        curl -Lks "https://raw.githubusercontent.com/0x369k/dotfiles/main/dotfiles.env" -o "./dotfiles.env" || safe_exit "Error downloading dotfiles.env"
-        source "./dotfiles.env"
+        echo -e "[${YELLOW}i${NC}] Local configuration not found, using default values."
+        log "[${YELLOW}i${NC}] Local configuration not found, using default values."
     fi
 }
 
