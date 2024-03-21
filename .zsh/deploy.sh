@@ -120,6 +120,7 @@ parse_arguments() {
         ;;
       --local)
         DEPLOY_MODE="local"
+        shift # Entferne --local aus der Argumentenliste
         ;;
       *)
         echo "Unbekanntes Argument: $1"
@@ -130,21 +131,28 @@ parse_arguments() {
 }
 
 main() {
+  # Initialisiere DEPLOY_MODE mit einem Standardwert
+  DEPLOY_MODE="local" # Setze den Standard-Modus auf lokale Bereitstellung
+
+  # Verarbeite die übergebenen Argumente
   parse_arguments "$@"
 
-  case "${deploy_mode}" in
-  local)
-    backup_files
-    initialize_and_checkout_dotfiles
-    echo -e "[${GREEN}✔${NC}] Local deployment completed successfully."
-    ;;
-  docker)
-    deploy_docker "${container_name}" "${image_name}" "${base_image}"
-    ;;
-  *)
-    safe_exit "Invalid deployment mode: ${deploy_mode}"
-    ;;
+  case "${DEPLOY_MODE}" in
+    local)
+      backup_files
+      initialize_and_checkout_dotfiles
+      echo -e "[${GREEN}✔${NC}] Local deployment completed successfully."
+      ;;
+    docker)
+      deploy_docker "${CUSTOM_CONTAINER_NAME:-devcontainer}" "${CUSTOM_IMAGE_NAME:-default_image_name}" "${CUSTOM_BASE_IMAGE:-archlinux:latest}"
+      ;;
+    *)
+      echo -e "[${RED}✘${NC}] Error: Invalid deployment mode: ${DEPLOY_MODE}"
+      exit 1
+      ;;
   esac
 }
 
+# Rufe main auf, um das Skript zu starten
 main "$@"
+
