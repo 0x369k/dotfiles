@@ -1,104 +1,136 @@
 #!/usr/bin/env bash
 
-# Farbdefinitionen
+# Color definitions
 GREEN='\033[0;32m'
 RED='\033[0;31m'
 YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
 NC='\033[0m'
 
-# Pfade und Standardwerte
+# Paths and default values
 DOTFILES_REPO="https://github.com/0x369k/dotfiles.git"
 DOTDIR="${HOME}/.dotfiles"
 BACKUP_DIR="${HOME}/.dotfiles_backup/$(date +%Y-%m-%d_%H-%M-%S)"
 TEMP_DIR="/tmp/dotfiles_temp"
 
-# Sicherer Exit
+# Safe exit function
 safe_exit() {
-    local message="$1"
-    echo -e "${RED}Fehler: ${message}${NC}"
-    [ -d "${TEMP_DIR}" ] && rm -rf "${TEMP_DIR}"
-    exit 1
+  local message="$1"
+  echo -e "${RED}Error: ${message}${NC}"
+  [ -d "${TEMP_DIR}" ] && rm -rf "${TEMP_DIR}"
+  exit 1
 }
 
-# Sichern von Dateien
+# Backup files function
 backup_files() {
-    mkdir -p "${BACKUP_DIR}"
-    for dir in ".zi" ".zsh" ".dotfiles"; do
-        [ -d "${HOME}/${dir}" ] && cp -r "${HOME}/${dir}" "${BACKUP_DIR}/"
-    done
-    for file in ".zshrc" ".zshenv"; do
-        [ -e "${HOME}/${file}" ] && cp -r "${HOME}/${file}" "${BACKUP_DIR}/"
-    done
+  echo -e "${BLUE}Creating backup directory: ${BACKUP_DIR}${NC}"
+  mkdir -p "${BACKUP_DIR}"
 
-    git clone --depth=1 "${DOTFILES_REPO}" "${TEMP_DIR}" || safe_exit "Fehler beim Klonen des Dotfiles-Repositorys"
-    cp -r "${TEMP_DIR}"/* "${BACKUP_DIR}/"
-    rm -rf "${TEMP_DIR}"
+  for dir in ".zi" ".zsh" ".dotfiles"; do
+    if [ -d "${HOME}/${dir}" ]; then
+      echo -e "${YELLOW}Backing up directory: ${HOME}/${dir}${NC}"
+      mv "${HOME}/${dir}" "${BACKUP_DIR}/"
+    fi
+  done
+
+  for file in ".zshrc" ".zshenv"; do
+    if [ -e "${HOME}/${file}" ]; then
+      echo -e "${YELLOW}Backing up file: ${HOME}/${file}${NC}"
+      mv "${HOME}/${file}" "${BACKUP_DIR}/"
+    fi
+  done
+
+  echo -e "${BLUE}Cloning dotfiles repository...${NC}"
+  git clone --depth=1 "${DOTFILES_REPO}" "${TEMP_DIR}" || safe_exit "Error while cloning the dotfiles repository"
+  echo -e "${GREEN}Dotfiles repository cloned successfully.${NC}"
+
+  echo -e "${BLUE}Copying dotfiles to backup directory...${NC}"
+  cp -r "${TEMP_DIR}"/* "${BACKUP_DIR}/"
+  echo -e "${GREEN}Dotfiles copied to backup directory successfully.${NC}"
+
+  rm -rf "${TEMP_DIR}"
 }
 
-# Initialisierung und Auschecken von Dotfiles
+# Initialize and checkout dotfiles function
 initialize_and_checkout_dotfiles() {
-    [ -d "${DOTDIR}" ] && safe_exit "Das Verzeichnis ${DOTDIR} existiert bereits. Bitte lösche es manuell, bevor du fortfährst."
-    git clone --bare "${DOTFILES_REPO}" "${DOTDIR}" || safe_exit "Fehler beim Klonen des Bare-Repositorys"
-    git --git-dir="${DOTDIR}" --work-tree="${HOME}" config --local status.showUntrackedFiles no
-    git --git-dir="${DOTDIR}" --work-tree="${HOME}" checkout || safe_exit "Fehler beim Auschecken der Dotfiles"
+  if [ -d "${DOTDIR}" ]; then
+    echo -e "${YELLOW}Moving existing ${DOTDIR} to backup directory...${NC}"
+    mv "${DOTDIR}" "${BACKUP_DIR}/"
+    echo -e "${GREEN}Existing ${DOTDIR} moved to backup directory successfully.${NC}"
+  fi
+
+  echo -e "${BLUE}Cloning bare repository...${NC}"
+  git clone --bare "${DOTFILES_REPO}" "${DOTDIR}" || safe_exit "Error while cloning the bare repository"
+  echo -e "${GREEN}Bare repository cloned successfully.${NC}"
+
+  git --git-dir="${DOTDIR}" --work-tree="${HOME}" config --local status.showUntrackedFiles no
+
+  echo -e "${BLUE}Checking out dotfiles...${NC}"
+  git --git-dir="${DOTDIR}" --work-tree="${HOME}" checkout || safe_exit "Error while checking out the dotfiles"
+  echo -e "${GREEN}Dotfiles checked out successfully.${NC}"
 }
 
-# Bereitstellung in einem Docker-Container
+# Deploy in a Docker container function
 deploy_docker() {
-    local container_name="${1:-devcontainer}"
-    local image_name="${2:-default_image_name}"
-    local base_image="${3:-archlinux:latest}"
+  local container_name="${1:-devcontainer}"
+  local image_name="${2:-default_image_name}"
+  local base_image="${3:-archlinux:latest}"
 
-    image_name=$(echo "${image_name}" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]')
-    base_image=$(echo "${base_image}" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]')
+  image_name=$(echo "${image_name}" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]')
+  base_image=$(echo "${base_image}" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]')
 
-    curl -Lks https://raw.githubusercontent.com/0x369k/dotfiles/main/.devcontainer/docker-compose.yml -o docker-compose.yml || safe_exit "Fehler beim Herunterladen der docker-compose.yml"
-    sed -i "s/\${IMAGE_NAME:-default-image-name}/${image_name}/g" docker-compose.yml
-    sed -i "s/\${BASE_IMAGE:-archlinux:latest}/${base_image}/g" docker-compose.yml
-    docker-compose up -d || safe_exit "Fehler beim Starten des Docker-Containers"
-    echo -e "${GREEN}Docker-Bereitstellung erfolgreich abgeschlossen.${NC}"
-    echo -e "Du kannst mit ${YELLOW}docker exec -it ${container_name} /usr/bin/zsh${NC} in den Container wechseln."
+  echo -e "${BLUE}Downloading docker-compose.yml...${NC}"
+  curl -Lks https://raw.githubusercontent.com/0x369k/dotfiles/main/.devcontainer/docker-compose.yml -o docker-compose.yml || safe_exit "Error while downloading docker-compose.yml"
+  echo -e "${GREEN}docker-compose.yml downloaded successfully.${NC}"
+
+  sed -i "s/\${IMAGE_NAME:-default-image-name}/${image_name}/g" docker-compose.yml
+  sed -i "s/\${BASE_IMAGE:-archlinux:latest}/${base_image}/g" docker-compose.yml
+
+  echo -e "${BLUE}Starting Docker container...${NC}"
+  docker-compose up -d || safe_exit "Error while starting the Docker container"
+  echo -e "${GREEN}Docker container started successfully.${NC}"
+  echo -e "You can enter the container with ${YELLOW}docker exec -it ${container_name} /usr/bin/zsh${NC}"
 }
 
-# Argumentenverarbeitung
+# Parse arguments function
 parse_arguments() {
-    while [[ $# -gt 0 ]]; do
-        case "$1" in
-        --local)
-            deploy_mode="local"
-            shift
-            ;;
-        --docker)
-            deploy_mode="docker"
-            container_name="$2"
-            image_name="$3"
-            base_image="$4"
-            shift 4
-            ;;
-        *)
-            safe_exit "Ungültiges Argument: $1"
-            ;;
-        esac
-    done
-}
-
-# Hauptausführung
-main() {
-    parse_arguments "$@"
-
-    case "${deploy_mode}" in
-    local)
-        backup_files
-        initialize_and_checkout_dotfiles
-        echo -e "${GREEN}Lokale Bereitstellung erfolgreich abgeschlossen.${NC}"
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --local)
+        deploy_mode="local"
+        shift
         ;;
-    docker)
-        deploy_docker "${container_name}" "${image_name}" "${base_image}"
+      --docker)
+        deploy_mode="docker"
+        container_name="$2"
+        image_name="$3"
+        base_image="$4"
+        shift 4
         ;;
-    *)
-        safe_exit "Ungültiger Bereitstellungsmodus: ${deploy_mode}"
+      *)
+        safe_exit "Invalid argument: $1"
         ;;
     esac
+  done
+}
+
+# Main execution function
+main() {
+  parse_arguments "$@"
+
+  case "${deploy_mode}" in
+    local)
+      backup_files
+      initialize_and_checkout_dotfiles
+      echo -e "${GREEN}Local deployment completed successfully.${NC}"
+      ;;
+    docker)
+      deploy_docker "${container_name}" "${image_name}" "${base_image}"
+      ;;
+    *)
+      safe_exit "Invalid deployment mode: ${deploy_mode}"
+      ;;
+  esac
 }
 
 main "$@"
