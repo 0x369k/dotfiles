@@ -102,6 +102,7 @@ all_packages=("${common_packages[@]}" "${distro_specific_packages[@]}")
 install_packages() {
     local packages=("$@")
     local failed_packages=()
+    local installed_packages=()
 
     for package in "${packages[@]}"; do
         verbose "[${BLUE}i${NC}] Installing package: $package" "$BLUE"
@@ -110,6 +111,7 @@ install_packages() {
             verbose "[${RED}✘${NC}] Failed to install package: $package" "$RED"
             log "[${RED}✘${NC}] Failed to install package: $package"
         else
+            installed_packages+=("$package")
             verbose "[${GREEN}✔${NC}] Package $package installed successfully" "$GREEN"
             log "[${GREEN}✔${NC}] Package $package installed successfully"
         fi
@@ -118,6 +120,10 @@ install_packages() {
     if [ "${#failed_packages[@]}" -gt 0 ]; then
         verbose "[${YELLOW}!${NC}] Some packages failed to install: ${failed_packages[*]}" "$YELLOW"
         log "[${YELLOW}!${NC}] Some packages failed to install: ${failed_packages[*]}"
+    fi
+
+    if [ "${#installed_packages[@]}" -gt 0 ]; then
+        log "[${GREEN}✔${NC}] Installed packages: ${installed_packages[*]}"
     fi
 }
 
