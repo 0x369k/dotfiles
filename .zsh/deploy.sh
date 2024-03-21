@@ -30,8 +30,6 @@ backup_files() {
   git clone --depth=1 "${DOTFILES_REPO}" "${TEMP_DIR}" || safe_exit "Error while cloning the dotfiles repository"
   echo -e "[${GREEN}✔${NC}] Dotfiles repository cloned successfully."
 
-  cd "${TEMP_DIR}" || safe_exit "Error while navigating to the temporary directory"
-
   while IFS= read -r -d '' file; do
     relative_path="${file#"${TEMP_DIR}/"}"
     target_dir="${BACKUP_DIR}/$(dirname "${relative_path}")"
@@ -89,7 +87,8 @@ deploy_docker() {
 
 # Parse arguments function
 parse_arguments() {
-  while [[ $# -gt 0 ]];    case "$1" in
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
       --local)
         deploy_mode="local"
         shift
@@ -122,8 +121,7 @@ main() {
       deploy_docker "${container_name}" "${image_name}" "${base_image}"
       ;;
     *)
-      safe_exit "Invalid deployment mode: ${deploy_mode}"
-      ;;
+      safe_exit "Invalid deployment mode: ${deploy_mode}"      ;;
   esac
 }
 
