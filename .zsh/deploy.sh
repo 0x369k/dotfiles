@@ -92,6 +92,23 @@ echo -e "[${YELLOW}i${NC}] Local configuration not found, using default values."
 log "[${YELLOW}i${NC}] Local configuration not found, using default values."
 fi
 }
+
+check_existing_container() {
+local container_name="$1"
+if docker ps -a --format '{{.Names}}' | grep -Eq "^${container_name}\$"; then
+echo -e "[${YELLOW}!${NC}] Container ${container_name} already exists."
+log "[${YELLOW}!${NC}] Container ${container_name} already exists."
+read -p "Do you want to remove the existing container? [y/N]: " remove_container
+if [[ "${remove_container,,}" =~ ^(y|yes)$ ]]; then
+docker rm -f "${container_name}"
+echo -e "[${GREEN}✔${NC}] Removed existing container ${container_name}."
+log "[${GREEN}✔${NC}] Removed existing container ${container_name}."
+else
+safe_exit "Deployment aborted due to existing container."
+fi
+fi
+}
+
 deploy_docker() {
 local container_name="${CUSTOM_CONTAINER_NAME}"
 local image_name="${CUSTOM_IMAGE_NAME}"

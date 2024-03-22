@@ -5,10 +5,10 @@ COPY package_manager_wrapper.sh /usr/local/bin/package_manager_wrapper.sh
 RUN chmod +x /usr/local/bin/package_manager_wrapper.sh
 # Install required packages using the wrapper script
 RUN /usr/local/bin/package_manager_wrapper.sh base-devel git zsh vim nano tree curl wget man-db man-pages texinfo iproute2 htop python python3-pip go sudo lsb-release locales autoconf automake
-RUN apt-get update && apt-get install --no-install-recommends -yq file dirmngr iproute2 procps sudo lsb-release \
-zlib1g tree vim nano ncurses-dev man telnet unzip zsh apt-transport-https jq gnupg2 git subversion curl make sudo \
-locales autoconf automake python3-minimal python3-pip libffi-dev python3-venv golang-go rsync socat build-essential \
-less vim htop && apt-get clean -y && rm -rf /var/lib/apt/lists/*
+RUN /usr/local/bin/package_manager_wrapper.sh base-devel git zsh vim nano tree curl wget man-db man-pages texinfo iproute2 htop python python-pip go sudo lsb-release autoconf automake
+RUN pacman -Syu --noconfirm file iproute2 procps sudo zlib tree vim nano ncurses man unzip zsh jq git curl make sudo \
+python python-pip libffi python-virtualenv go rsync socat base-devel \
+less vim htop && pacman -Scc --noconfirm
 # Create a new user with Zsh as the default shell
 ARG USERNAME=developer
 RUN useradd -m -s /usr/bin/zsh $USERNAME && \
