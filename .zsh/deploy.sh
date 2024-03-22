@@ -225,8 +225,8 @@ main() {
             ;;
         docker)
             deploy_docker
-            local container_name=$(get_container_name)
-            local image_name=$(docker inspect --format='{{.Config.Image}}' "$container_name")
+            local container_name=$(docker ps --format '{{.Names}}' --filter "name=^${CUSTOM_CONTAINER_NAME}$")
+            local image_name=$(docker ps --format '{{.Image}}' --filter "name=^${CUSTOM_CONTAINER_NAME}$")
             echo -e "[${GREEN}✔${NC}] Docker container $container_name started with image $image_name"
             log "[${GREEN}✔${NC}] Docker container $container_name started with image $image_name"
             echo "Docker container $container_name started. You can enter with 'docker exec -it $container_name /usr/bin/zsh'"
