@@ -124,49 +124,49 @@ check_existing_container() {
 }
 
 deploy_docker() {
-    local container_name="${CUSTOM_CONTAINER_NAME}"
-    local image_name="${CUSTOM_IMAGE_NAME}"
-    local base_image="${CUSTOM_BASE_IMAGE}"
-    local current_dir=$(pwd)
-    local username="${CUSTOM_USERNAME}"
-    echo -e "[${BLUE}i${NC}] Container Name: ${container_name}"
-    log "[${BLUE}i${NC}] Container Name: ${container_name}"
-    echo -e "[${BLUE}i${NC}] Image Name: ${image_name}"
-    log "[${BLUE}i${NC}] Image Name: ${image_name}"
-    echo -e "[${BLUE}i${NC}] Base Image: ${base_image}"
-    log "[${BLUE}i${NC}] Base Image: ${base_image}"
-    echo -e "[${BLUE}i${NC}] Current Directory: ${current_dir}"
-    log "[${BLUE}i${NC}] Current Directory: ${current_dir}"
-    echo -e "[${BLUE}i${NC}] Username: ${username}"
-    log "[${BLUE}i${NC}] Username: ${username}"
-    mkdir -p "$TEMP_DIR"
-    curl -Lks "$DOCKERFILE_URL" -o "$TEMP_DIR/Dockerfile" || safe_exit "Error downloading Dockerfile"
-    log "[${GREEN}✔${NC}] Downloaded Dockerfile"
-    curl -Lks "$DOCKER_COMPOSE_FILE_URL" -o "$TEMP_DIR/docker-compose.yml" || safe_exit "Error downloading docker-compose.yml"
-    log "[${GREEN}✔${NC}] Downloaded docker-compose.yml"
-    curl -Lks "https://raw.githubusercontent.com/0x369k/dotfiles/main/.devcontainer/package_manager_wrapper.sh" -o "$TEMP_DIR/package_manager_wrapper.sh" || safe_exit "Error downloading package_manager_wrapper.sh"
-    log "[${GREEN}✔${NC}] Downloaded package_manager_wrapper.sh"
-    local default_base_image=$(grep 'ARG BASE_IMAGE=' "$TEMP_DIR/Dockerfile" | cut -d'=' -f2)
-    if [[ "$base_image" != "$default_base_image" ]]; then
-        sed -i "s|ARG BASE_IMAGE=.*|ARG BASE_IMAGE=$base_image|" "$TEMP_DIR/Dockerfile"
-        log "Customized base image: $base_image"
-    fi
-    sed -i "s|{{IMAGE_NAME}}|$image_name|g" "$TEMP_DIR/docker-compose.yml"
-    log "Set image name to: $image_name"
-    sed -i "s|{{CONTAINER_NAME}}|$container_name|g" "$TEMP_DIR/docker-compose.yml"
-    log "Set container name to: $container_name"
-    sed -i "s|- .:/home/developer:cached|- $current_dir:/home/$username/workspace:cached|g" "$TEMP_DIR/docker-compose.yml"
-    log "Set volume mount to: $current_dir:/home/$username/workspace:cached"
-    sed -i "s|developer|$username|g" "$TEMP_DIR/Dockerfile"
-    log "Set username to: $username"
-    check_existing_container "$container_name"
-    docker-compose -f "$TEMP_DIR/docker-compose.yml" up -d --build || safe_exit "Failed to start Docker container"
-    local container_name=$(get_container_name)
-    local image_name=$(docker inspect --format='{{.Config.Image}}' "$container_name")
-    echo -e "[${GREEN}✔${NC}] Docker container $container_name started with image $image_name"
-    log "[${GREEN}✔${NC}] Docker container $container_name started with image $image_name"
-    echo "Docker container $container_name started. You can enter with 'docker exec -it $container_name /usr/bin/zsh'"
-    rm -rf "$TEMP_DIR"
+local container_name="${CUSTOM_CONTAINER_NAME}"
+local image_name="${CUSTOM_IMAGE_NAME}"
+local base_image="${CUSTOM_BASE_IMAGE}"
+local current_dir=$(pwd)
+local username="${CUSTOM_USERNAME}"
+echo -e "[${BLUE}i${NC}] Container Name: ${container_name}"
+log "[${BLUE}i${NC}] Container Name: ${container_name}"
+echo -e "[${BLUE}i${NC}] Image Name: ${image_name}"
+log "[${BLUE}i${NC}] Image Name: ${image_name}"
+echo -e "[${BLUE}i${NC}] Base Image: ${base_image}"
+log "[${BLUE}i${NC}] Base Image: ${base_image}"
+echo -e "[${BLUE}i${NC}] Current Directory: ${current_dir}"
+log "[${BLUE}i${NC}] Current Directory: ${current_dir}"
+echo -e "[${BLUE}i${NC}] Username: ${username}"
+log "[${BLUE}i${NC}] Username: ${username}"
+mkdir -p "$TEMP_DIR"
+curl -Lks "$DOCKERFILE_URL" -o "$TEMP_DIR/Dockerfile" || safe_exit "Error downloading Dockerfile"
+log "[${GREEN}✔${NC}] Downloaded Dockerfile"
+curl -Lks "$DOCKER_COMPOSE_FILE_URL" -o "$TEMP_DIR/docker-compose.yml" || safe_exit "Error downloading docker-compose.yml"
+log "[${GREEN}✔${NC}] Downloaded docker-compose.yml"
+curl -Lks "https://raw.githubusercontent.com/0x369k/dotfiles/main/.devcontainer/package_manager_wrapper.sh" -o "$TEMP_DIR/package_manager_wrapper.sh" || safe_exit "Error downloading package_manager_wrapper.sh"
+log "[${GREEN}✔${NC}] Downloaded package_manager_wrapper.sh"
+local default_base_image=$(grep 'ARG BASE_IMAGE=' "$TEMP_DIR/Dockerfile" | cut -d'=' -f2)
+if [[ "$base_image" != "$default_base_image" ]]; then
+sed -i "s|ARG BASE_IMAGE=.*|ARG BASE_IMAGE=$base_image|" "$TEMP_DIR/Dockerfile"
+log "Customized base image: $base_image"
+fi
+sed -i "s|{{IMAGE_NAME}}|$image_name|g" "$TEMP_DIR/docker-compose.yml"
+log "Set image name to: $image_name"
+sed -i "s|{{CONTAINER_NAME}}|$container_name|g" "$TEMP_DIR/docker-compose.yml"
+log "Set container name to: $container_name"
+sed -i "s|- .:/home/developer:cached|- $current_dir:/home/$username/workspace:cached|g" "$TEMP_DIR/docker-compose.yml"
+log "Set volume mount to: $current_dir:/home/$username/workspace:cached"
+sed -i "s|developer|$username|g" "$TEMP_DIR/Dockerfile"
+log "Set username to: $username"
+check_existing_container "$container_name"
+docker-compose -f "$TEMP_DIR/docker-compose.yml" up -d --build || safe_exit "Failed to start Docker container"
+local container_name=$(get_container_name)
+local image_name=$(docker inspect --format='{{.Config.Image}}' "$container_name")
+echo -e "[${GREEN}✔${NC}] Docker container $container_name started with image $image_name"
+log "[${GREEN}✔${NC}] Docker container $container_name started with image $image_name"
+echo "Docker container $container_name started. You can enter with 'docker exec -it $container_name /usr/bin/zsh'"
+rm -rf "$TEMP_DIR"
 }
 
 parse_arguments() {
