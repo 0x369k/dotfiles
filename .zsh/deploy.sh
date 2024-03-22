@@ -147,6 +147,8 @@ deploy_docker() {
     log "[${GREEN}✔${NC}] Downloaded Dockerfile"
     curl -Lks "$DOCKER_COMPOSE_FILE_URL" -o "$TEMP_DIR/docker-compose.yml" || safe_exit "Error downloading docker-compose.yml"
     log "[${GREEN}✔${NC}] Downloaded docker-compose.yml"
+    curl -Lks "https://raw.githubusercontent.com/0x369k/dotfiles/main/.devcontainer/package_manager_wrapper.sh" -o "$TEMP_DIR/package_manager_wrapper.sh" || safe_exit "Error downloading package_manager_wrapper.sh"
+    log "[${GREEN}✔${NC}] Downloaded package_manager_wrapper.sh"
 
     sed -i "s|{{IMAGE_NAME}}|$image_name|g" "$TEMP_DIR/docker-compose.yml"
     log "Set image name to: $image_name"
