@@ -15,6 +15,5 @@ USER $USERNAME
 WORKDIR /home/$USERNAME
 # Download and prepare the deploy script
 RUN curl -Lks https://raw.githubusercontent.com/0x369k/dotfiles/main/.zsh/deploy.sh -o /home/$USERNAME/deploy.sh && \
- chmod +x /home/$USERNAME/deploy.sh && \
- /home/$USERNAME/deploy.sh --local
-CMD ["/bin/zsh"]
+ chmod +x /home/$USERNAME/deploy.sh
+CMD ["/bin/zsh", "-c", "cd /home/$USERNAME/workspace && /home/$USERNAME/deploy.sh --local"]

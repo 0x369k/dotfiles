@@ -147,8 +147,6 @@ deploy_docker() {
     log "[${GREEN}✔${NC}] Downloaded Dockerfile"
     curl -Lks "$DOCKER_COMPOSE_FILE_URL" -o "$TEMP_DIR/docker-compose.yml" || safe_exit "Error downloading docker-compose.yml"
     log "[${GREEN}✔${NC}] Downloaded docker-compose.yml"
-    curl -Lks "https://raw.githubusercontent.com/0x369k/dotfiles/main/.devcontainer/package_manager_wrapper.sh" -o "$TEMP_DIR/package_manager_wrapper.sh" || safe_exit "Error downloading package_manager_wrapper.sh"
-    log "[${GREEN}✔${NC}] Downloaded package_manager_wrapper.sh"
 
     sed -i "s|{{IMAGE_NAME}}|$image_name|g" "$TEMP_DIR/docker-compose.yml"
     log "Set image name to: $image_name"
@@ -157,11 +155,13 @@ deploy_docker() {
     sed -i "s|- .:/home/developer:cached|- $current_dir:/home/$username/workspace:cached|g" "$TEMP_DIR/docker-compose.yml"
     log "Set volume mount to: $current_dir:/home/$username/workspace:cached"
 
-    docker-compose -f "$TEMP_DIR/docker-compose.yml" up -d --build || safe_exit "Failed to start Docker container"
-
-    echo -e "[${GREEN}✔${NC}] Docker container $container_name started. You can enter with 'docker exec -it $container_name /usr/bin/zsh'"
-
-    rm -rf "$TEMP_DIR"
+docker-compose -f "$TEMP_DIR/docker-compose.yml" up -d --build || safe_exit "Failed to start Docker container"
+local container_name=$(get_container_name)
+local image_name=$(docker inspect --format='{{.Config.Image}}' "$container_name")
+echo -e "[${GREEN}✔${NC}] Docker container $container_name started with image $image_name"
+log "[${GREEN}✔${NC}] Docker container $container_name started with image $image_name"
+echo "Docker container $container_name started. You can enter with 'docker exec -it $container_name /usr/bin/zsh'"
+rm -rf "$TEMP_DIR"
 }
 
 parse_arguments() {
