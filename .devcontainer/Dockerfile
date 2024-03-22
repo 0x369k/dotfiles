@@ -6,7 +6,6 @@ RUN curl -Lks https://raw.githubusercontent.com/0x369k/dotfiles/main/.devcontain
     /usr/local/bin/package_manager_wrapper.sh
 # Install required packages using the wrapper script
 RUN /usr/local/bin/package_manager_wrapper.sh
-less vim htop && pacman -Scc --noconfirm
 # Create a new user with Zsh as the default shell
 ARG USERNAME=developer
 RUN useradd -m -s /usr/bin/zsh $USERNAME && \
