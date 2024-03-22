@@ -23,7 +23,7 @@ common_packages=(
     file
     iproute2
     procps
-    sudo
+    zsh
     lsb-release
     zlib1g
     tree
