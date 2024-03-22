@@ -10,7 +10,8 @@ RUN /usr/local/bin/package_manager_wrapper.sh base-devel git vim nano tree curl 
 
 # Create a new user with bash as the default shell
 ARG USERNAME=developer
-RUN useradd -m -s /bin/bash $USERNAME && \
+RUN mkdir -p /etc/sudoers.d && \
+    useradd -m -s /bin/bash $USERNAME && \
     echo "$USERNAME ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/$USERNAME && \
     chmod 0440 /etc/sudoers.d/$USERNAME && \
     echo "$USERNAME:$USERNAME" | chpasswd
