@@ -1,4 +1,3 @@
-ARG BASE_IMAGE=ubuntu:latest
 FROM $BASE_IMAGE
 # Copy the package_manager_wrapper.sh script into the container
 COPY package_manager_wrapper.sh /usr/local/bin/package_manager_wrapper.sh
