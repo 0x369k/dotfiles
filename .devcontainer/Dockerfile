@@ -1,6 +1,8 @@
 ARG BASE_IMAGE=archlinux:latest
 FROM $BASE_IMAGE
 
+SHELL ["/bin/bash", "-c"]
+
 # Copy the package_manager_wrapper.sh script into the container
 COPY package_manager_wrapper.sh /usr/local/bin/package_manager_wrapper.sh
 RUN chmod +x /usr/local/bin/package_manager_wrapper.sh

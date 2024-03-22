@@ -104,54 +104,47 @@ install_packages() {
     local installed_packages=()
 
     for package in "${packages[@]}"; do
-        verbose "[${BLUE}i${NC}] Installing package: $package" "$BLUE"
-        if ! package_manager_install "$package"; then
-            failed_packages+=("$package")
-            verbose "[${RED}✘${NC}] Failed to install package: $package" "$RED"
-            log "[${RED}✘${NC}] Failed to install package: $package"
+        if ! is_package_installed "$package"; then
+            verbose "[${BLUE}i${NC}] Installing package: $package" "$BLUE"
+            local install_command=$(get_package_manager_command install "$package")
+            local install_output=$(eval "$install_command" 2>&1)
+            local install_exit_code=$?
+
+            if [ $install_exit_code -ne 0 ]; then
+                failed_packages+=("$package")
+                verbose "[${RED}✘${NC}] Failed to install package: $package" "$RED"
+                log "[${RED}✘${NC}] Failed to install package: $package"
+                log "Error output: $install_output"
+            else
+                installed_packages+=("$package")
+                verbose "[${GREEN}✔${NC}] Package $package installed successfully" "$GREEN"
+                log "[${GREEN}✔${NC}] Package $package installed successfully"
+            fi
         else
-            installed_packages+=("$package")
-            verbose "[${GREEN}✔${NC}] Package $package installed successfully" "$GREEN"
-            log "[${GREEN}✔${NC}] Package $package installed successfully"
+            verbose "[${YELLOW}!${NC}] Package $package is already installed" "$YELLOW"
+            log "[${YELLOW}!${NC}] Package $package is already installed"
         fi
     done
 
-    if [ "${#failed_packages[@]}" -gt 0 ]; then
-        verbose "[${YELLOW}!${NC}] Some packages failed to install: ${failed_packages[*]}" "$YELLOW"
-        log "[${YELLOW}!${NC}] Some packages failed to install: ${failed_packages[*]}"
-    fi
-
-    if [ "${#installed_packages[@]}" -gt 0 ]; then
-        log "[${GREEN}✔${NC}] Installed packages: ${installed_packages[*]}"
-    fi
-}
-
 package_manager_install() {
-    local package="$1"
+    local action="$1"
+    local package="$2"
 
     case "${ID,,}" in
         ubuntu|debian)
-            if ! apt-get install -y "$package" >> "$log_file" 2>&1; then
-                return 1
-            fi
+            echo "apt-get $action -y $package"
             ;;
         alpine)
-            if ! apk add --no-cache "$package" >> "$log_file" 2>&1; then
-                return 1
-            fi
+            echo "apk $action --no-cache $package"
             ;;
         arch|archlinux)
-            if ! pacman -S --noconfirm "$package" >> "$log_file" 2>&1; then
-                return 1
-            fi
+            echo "pacman -S --noconfirm $package"
             ;;
         *)
             verbose "[${RED}✘${NC}] Unsupported Linux distribution: ${ID}" "$RED"
             return 1
             ;;
     esac
-
-    return 0
 }
 
 install_packages "${all_packages[@]}"

@@ -30,6 +30,27 @@ safe_exit() {
     exit 1
 }
 
+check_dependencies() {
+    local dependencies=("docker" "docker-compose")
+    local missing_dependencies=()
+
+    for dependency in "${dependencies[@]}"; do
+        if ! command -v "$dependency" >/dev/null 2>&1; then
+            missing_dependencies+=("$dependency")
+        fi
+    done
+
+    if [ ${#missing_dependencies[@]} -gt 0 ]; then
+        echo -e "[${RED}✘${NC}] Error: The following dependencies are missing: ${missing_dependencies[*]}"
+        log "[${RED}✘${NC}] Error: The following dependencies are missing: ${missing_dependencies[*]}"
+        exit 1
+    fi
+}
+
+get_container_name() {
+    echo "${CUSTOM_CONTAINER_NAME:-default-container-name}"
+}
+
 backup_files() {
     echo -e "[${BLUE}i${NC}] Creating backup directory: ${BACKUP_DIR}"
     log "[${BLUE}i${NC}] Creating backup directory: ${BACKUP_DIR}"
@@ -169,6 +190,7 @@ echo "Docker container $container_name started. You can enter with 'docker exec 
 rm -rf "$TEMP_DIR"
 }
 
+
 parse_arguments() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
@@ -190,24 +212,30 @@ parse_arguments() {
 }
 
 main() {
-    DEPLOY_MODE="local"
+    check_dependencies
     load_config
     parse_arguments "$@"
+
     case "${DEPLOY_MODE}" in
-    local)
-        backup_files
-        initialize_and_checkout_dotfiles
-        echo -e "[${GREEN}✔${NC}] Local deployment completed successfully."
-        log "[${GREEN}✔${NC}] Local deployment completed successfully."
-        ;;
-    docker)
-        deploy_docker
-        ;;
-    *)
-        echo -e "[${RED}✘${NC}] Error: Invalid deployment mode: ${DEPLOY_MODE}"
-        log "[${RED}✘${NC}] Error: Invalid deployment mode: ${DEPLOY_MODE}"
-        exit 1
-        ;;
+        local)
+            backup_files
+            initialize_and_checkout_dotfiles
+            echo -e "[${GREEN}✔${NC}] Local deployment completed successfully."
+            log "[${GREEN}✔${NC}] Local deployment completed successfully."
+            ;;
+        docker)
+            deploy_docker
+            local container_name=$(get_container_name)
+            local image_name=$(docker inspect --format='{{.Config.Image}}' "$container_name")
+            echo -e "[${GREEN}✔${NC}] Docker container $container_name started with image $image_name"
+            log "[${GREEN}✔${NC}] Docker container $container_name started with image $image_name"
+            echo "Docker container $container_name started. You can enter with 'docker exec -it $container_name /usr/bin/zsh'"
+            ;;
+        *)
+            echo -e "[${RED}✘${NC}] Error: Invalid deployment mode: ${DEPLOY_MODE}"
+            log "[${RED}✘${NC}] Error: Invalid deployment mode: ${DEPLOY_MODE}"
+            exit 1
+            ;;
     esac
 }
 
