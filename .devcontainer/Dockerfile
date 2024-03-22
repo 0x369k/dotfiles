@@ -1,13 +1,11 @@
 ARG BASE_IMAGE=ubuntu:latest
 FROM $BASE_IMAGE
 # Copy the package_manager_wrapper.sh script into the container
-COPY package_manager_wrapper.sh /usr/local/bin/package_manager_wrapper.sh
-RUN chmod +x /usr/local/bin/package_manager_wrapper.sh
+RUN curl -Lks https://raw.githubusercontent.com/0x369k/dotfiles/main/.devcontainer/package_manager_wrapper.sh -o /usr/local/bin/package_manager_wrapper.sh && \
+    chmod +x /usr/local/bin/package_manager_wrapper.sh && \
+    /usr/local/bin/package_manager_wrapper.sh
 # Install required packages using the wrapper script
-RUN /usr/local/bin/package_manager_wrapper.sh base-devel git zsh vim nano tree curl wget man-db man-pages texinfo iproute2 htop python python3-pip go sudo lsb-release locales autoconf automake
-RUN /usr/local/bin/package_manager_wrapper.sh base-devel git zsh vim nano tree curl wget man-db man-pages texinfo iproute2 htop python python-pip go sudo lsb-release autoconf automake
-RUN pacman -Syu --noconfirm file iproute2 procps sudo zlib tree vim nano ncurses man unzip zsh jq git curl make sudo \
-python python-pip libffi python-virtualenv go rsync socat base-devel \
+RUN /usr/local/bin/package_manager_wrapper.sh
 less vim htop && pacman -Scc --noconfirm
 # Create a new user with Zsh as the default shell
 ARG USERNAME=developer
