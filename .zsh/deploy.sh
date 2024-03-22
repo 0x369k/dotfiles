@@ -192,23 +192,49 @@ rm -rf "$TEMP_DIR"
 
 
 parse_arguments() {
+    local arg_mode=""
+    local arg_container_name=""
+    local arg_base_image=""
+
     while [[ $# -gt 0 ]]; do
         case "$1" in
-        --docker)
-            DEPLOY_MODE="docker"
-            shift
-            ;;
-        --local)
-            DEPLOY_MODE="local"
-            shift
-            ;;
-        *)
-            echo "Unknown argument: $1"
-            log "Unknown argument: $1"
-            exit 1
-            ;;
+            --docker)
+                arg_mode="docker"
+                shift
+                ;;
+            --local)
+                arg_mode="local"
+                shift
+                ;;
+            *)
+                if [[ -z "$arg_mode" ]]; then
+                    echo "Unknown argument: $1"
+                    log "Unknown argument: $1"
+                    exit 1
+                elif [[ -z "$arg_container_name" ]]; then
+                    arg_container_name="$1"
+                    shift
+                elif [[ -z "$arg_base_image" ]]; then
+                    arg_base_image="$1"
+                    shift
+                else
+                    echo "Too many arguments"
+                    log "Too many arguments"
+                    exit 1
+                fi
+                ;;
         esac
     done
+
+    if [[ -n "$arg_container_name" ]]; then
+        CUSTOM_CONTAINER_NAME="$arg_container_name"
+    fi
+
+    if [[ -n "$arg_base_image" ]]; then
+        CUSTOM_BASE_IMAGE="$arg_base_image"
+    fi
+
+    DEPLOY_MODE="$arg_mode"
 }
 
 main() {
