@@ -17,10 +17,9 @@ BACKUP_DIR="${HOME}/.dotfiles_backup/$(date +%Y-%m-%d_%H-%M-%S)"
 TEMP_DIR="/tmp/dotfiles_temp"
 LOG_FILE="/tmp/deploy.log"
 
-
 log() {
     local message="$1"
-    echo -e "[$(date +'%Y-%m-%d %H:%M:%S')] $message" >> "$LOG_FILE"
+    echo -e "[$(date +'%Y-%m-%d %H:%M:%S')] $message" >>"$LOG_FILE"
 }
 
 safe_exit() {
@@ -130,7 +129,6 @@ deploy_docker() {
     local base_image="${CUSTOM_BASE_IMAGE}"
     local current_dir=$(pwd)
     local username="${CUSTOM_USERNAME}"
-
     echo -e "[${BLUE}i${NC}] Container Name: ${container_name}"
     log "[${BLUE}i${NC}] Container Name: ${container_name}"
     echo -e "[${BLUE}i${NC}] Image Name: ${image_name}"
@@ -141,45 +139,52 @@ deploy_docker() {
     log "[${BLUE}i${NC}] Current Directory: ${current_dir}"
     echo -e "[${BLUE}i${NC}] Username: ${username}"
     log "[${BLUE}i${NC}] Username: ${username}"
-
     mkdir -p "$TEMP_DIR"
     curl -Lks "$DOCKERFILE_URL" -o "$TEMP_DIR/Dockerfile" || safe_exit "Error downloading Dockerfile"
     log "[${GREEN}✔${NC}] Downloaded Dockerfile"
     curl -Lks "$DOCKER_COMPOSE_FILE_URL" -o "$TEMP_DIR/docker-compose.yml" || safe_exit "Error downloading docker-compose.yml"
     log "[${GREEN}✔${NC}] Downloaded docker-compose.yml"
-
+    curl -Lks "https://raw.githubusercontent.com/0x369k/dotfiles/main/.devcontainer/package_manager_wrapper.sh" -o "$TEMP_DIR/package_manager_wrapper.sh" || safe_exit "Error downloading package_manager_wrapper.sh"
+    log "[${GREEN}✔${NC}] Downloaded package_manager_wrapper.sh"
+    local default_base_image=$(grep 'ARG BASE_IMAGE=' "$TEMP_DIR/Dockerfile" | cut -d'=' -f2)
+    if [[ "$base_image" != "$default_base_image" ]]; then
+        sed -i "s|ARG BASE_IMAGE=.*|ARG BASE_IMAGE=$base_image|" "$TEMP_DIR/Dockerfile"
+        log "Customized base image: $base_image"
+    fi
     sed -i "s|{{IMAGE_NAME}}|$image_name|g" "$TEMP_DIR/docker-compose.yml"
     log "Set image name to: $image_name"
     sed -i "s|{{CONTAINER_NAME}}|$container_name|g" "$TEMP_DIR/docker-compose.yml"
     log "Set container name to: $container_name"
     sed -i "s|- .:/home/developer:cached|- $current_dir:/home/$username/workspace:cached|g" "$TEMP_DIR/docker-compose.yml"
     log "Set volume mount to: $current_dir:/home/$username/workspace:cached"
-
-docker-compose -f "$TEMP_DIR/docker-compose.yml" up -d --build || safe_exit "Failed to start Docker container"
-local container_name=$(get_container_name)
-local image_name=$(docker inspect --format='{{.Config.Image}}' "$container_name")
-echo -e "[${GREEN}✔${NC}] Docker container $container_name started with image $image_name"
-log "[${GREEN}✔${NC}] Docker container $container_name started with image $image_name"
-echo "Docker container $container_name started. You can enter with 'docker exec -it $container_name /usr/bin/zsh'"
-rm -rf "$TEMP_DIR"
+    sed -i "s|developer|$username|g" "$TEMP_DIR/Dockerfile"
+    log "Set username to: $username"
+    check_existing_container "$container_name"
+    docker-compose -f "$TEMP_DIR/docker-compose.yml" up -d --build || safe_exit "Failed to start Docker container"
+    local container_name=$(get_container_name)
+    local image_name=$(docker inspect --format='{{.Config.Image}}' "$container_name")
+    echo -e "[${GREEN}✔${NC}] Docker container $container_name started with image $image_name"
+    log "[${GREEN}✔${NC}] Docker container $container_name started with image $image_name"
+    echo "Docker container $container_name started. You can enter with 'docker exec -it $container_name /usr/bin/zsh'"
+    rm -rf "$TEMP_DIR"
 }
 
 parse_arguments() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            --docker)
-                DEPLOY_MODE="docker"
-                shift
-                ;;
-            --local)
-                DEPLOY_MODE="local"
-                shift
-                ;;
-            *)
-                echo "Unknown argument: $1"
-                log "Unknown argument: $1"
-                exit 1
-                ;;
+        --docker)
+            DEPLOY_MODE="docker"
+            shift
+            ;;
+        --local)
+            DEPLOY_MODE="local"
+            shift
+            ;;
+        *)
+            echo "Unknown argument: $1"
+            log "Unknown argument: $1"
+            exit 1
+            ;;
         esac
     done
 }
@@ -189,23 +194,21 @@ main() {
     load_config
     parse_arguments "$@"
     case "${DEPLOY_MODE}" in
-        local)
-            backup_files
-            initialize_and_checkout_dotfiles
-            echo -e "[${GREEN}✔${NC}] Local deployment completed successfully."
-            log "[${GREEN}✔${NC}] Local deployment completed successfully."
-            ;;
-        docker)
-            deploy_docker
-            ;;
-        *)
-            echo -e "[${RED}✘${NC}] Error: Invalid deployment mode: ${DEPLOY_MODE}"
-            log "[${RED}✘${NC}] Error: Invalid deployment mode: ${DEPLOY_MODE}"
-            exit 1
-            ;;
+    local)
+        backup_files
+        initialize_and_checkout_dotfiles
+        echo -e "[${GREEN}✔${NC}] Local deployment completed successfully."
+        log "[${GREEN}✔${NC}] Local deployment completed successfully."
+        ;;
+    docker)
+        deploy_docker
+        ;;
+    *)
+        echo -e "[${RED}✘${NC}] Error: Invalid deployment mode: ${DEPLOY_MODE}"
+        log "[${RED}✘${NC}] Error: Invalid deployment mode: ${DEPLOY_MODE}"
+        exit 1
+        ;;
     esac
 }
 
 main "$@"
-
-
