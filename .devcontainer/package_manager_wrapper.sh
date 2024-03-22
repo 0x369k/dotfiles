@@ -1,24 +1,19 @@
 #!/usr/bin/env bash
-
 GREEN='\033[0;32m'
 RED='\033[0;31m'
 YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
-
 log_file="/tmp/package_manager_wrapper.log"
-
 log() {
     local message="$1"
     echo -e "[$(date +'%Y-%m-%d %H:%M:%S')] $message" >> "$log_file"
 }
-
 verbose() {
     local message="$1"
     local color="$2"
     echo -e "${color}${message}${NC}"
 }
-
 common_packages=(
     file
     iproute2
@@ -45,9 +40,7 @@ common_packages=(
     autoconf
     automake
 )
-
 distro_specific_packages=()
-
 # Detect the Linux distribution
 if [ -f /etc/os-release ]; then
     source /etc/os-release
@@ -95,21 +88,17 @@ else
     verbose "[${RED}✘${NC}] Unable to detect Linux distribution" "$RED"
     exit 1
 fi
-
 all_packages=("${common_packages[@]}" "${distro_specific_packages[@]}")
-
 install_packages() {
     local packages=("$@")
     local failed_packages=()
     local installed_packages=()
-
     for package in "${packages[@]}"; do
         if ! is_package_installed "$package"; then
             verbose "[${BLUE}i${NC}] Installing package: $package" "$BLUE"
             local install_command=$(get_package_manager_command install "$package")
             local install_output=$(eval "$install_command" 2>&1)
             local install_exit_code=$?
-
             if [ $install_exit_code -ne 0 ]; then
                 failed_packages+=("$package")
                 verbose "[${RED}✘${NC}] Failed to install package: $package" "$RED"
@@ -125,11 +114,17 @@ install_packages() {
             log "[${YELLOW}!${NC}] Package $package is already installed"
         fi
     done
-
-package_manager_install() {
+    if [ "${#failed_packages[@]}" -gt 0 ]; then
+        verbose "[${YELLOW}!${NC}] Some packages failed to install: ${failed_packages[*]}" "$YELLOW"
+        log "[${YELLOW}!${NC}] Some packages failed to install: ${failed_packages[*]}"
+    fi
+    if [ "${#installed_packages[@]}" -gt 0 ]; then
+        log "[${GREEN}✔${NC}] Installed packages: ${installed_packages[*]}"
+    fi
+}
+get_package_manager_command() {
     local action="$1"
     local package="$2"
-
     case "${ID,,}" in
         ubuntu|debian)
             echo "apt-get $action -y $package"
@@ -146,5 +141,4 @@ package_manager_install() {
             ;;
     esac
 }
-
 install_packages "${all_packages[@]}"
