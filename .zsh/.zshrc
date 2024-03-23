@@ -1,35 +1,11 @@
-debug_zshrc() {
-    local debug_mode="$1"
-    local debug_log_file="${HOME}/.cache/zsh/zshrc_debug.log"
-    local zprof_output_file="${HOME}/.cache/zsh/zshrc_zprof.log"
-
-    if [[ "$debug_mode" == "on" ]]; then
-        echo "Debugging .zshrc..."
-        mkdir -p "${HOME}/.cache/zsh"
-        # Verbose mode
-        setopt xtrace
-        PS4=$'%D{%M%S%.} %N:%i> '
-        exec 3>&2 2>"$debug_log_file"
-        # Zsh profiler
-        zmodload zsh/zprof
-        # Syntax check
-        zsh -n "$0" || echo "Syntax error found in .zshrc"
-
-    elif [[ "$debug_mode" == "off" ]]; then
-        # Disable verbose mode
-        unsetopt xtrace
-        exec 2>&3 3>&-
-        # Stop profiler and display results
-        zprof >"$zprof_output_file"
-        echo "Profiler output saved to: $zprof_output_file"
-        echo "Debugging completed."
-    else
-        echo "Invalid debug mode. Usage: debug_zshrc [on|off]"
-    fi
-}
-
-# Usage: debug_zshrc [on|off]
-debug_zshrc off
+local DEBUG=false
+if [[ $DEBUG == "true" ]]; then
+    zmodload zsh/zprof
+    NOW=$(date +"%Y-%m-%d_%H:%M:%S")
+    PS4=$'%D{%M%S%.} %N:%i> '
+    exec 3>&2 2>~/.cache/zi/log/startlog_$NOW.log
+    setopt xtrace prompt_subst
+fi
 
 function check_ssh_x11 {
   if [[ -n "$SSH_CLIENT" || -n "$SSH_TTY" ]]; then
