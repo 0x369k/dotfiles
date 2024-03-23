@@ -1,29 +1,45 @@
-#!/usr/bin/env bash
+#!/usr/bin/env zsh
 
 # Color Codes
 GREEN='\033[0;32m'
 RED='\033[0;31m'
 YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
+BOLD='\033[1m'
 NC='\033[0m' # No Color
 
+# Default configuration
+typeset -A CONFIG
+CONFIG=(
+    DOTFILES_REPO "https://github.com/0x369k/dotfiles.git"
+    DOTDIR "${HOME}/.dotfiles"
+    BACKUP_DIR "${HOME}/.dotfiles_backup"
+    LOG_DIR "${HOME}/.dotfiles_log"
+)
+
+# Load user configuration if available
+CONFIG_FILE="${HOME}/.dotfiles.conf"
+if [[ -f "$CONFIG_FILE" ]]; then
+    source "$CONFIG_FILE"
+fi
+
 # Repositories and file URLs
-DOTFILES_REPO="https://github.com/0x369k/dotfiles.git"
-DOTDIR="${HOME}/.dotfiles"
-BACKUP_DIR="${HOME}/.dotfiles_backup/$(date +%Y-%m-%d_%H-%M-%S)"
+DOTFILES_REPO="${CONFIG[DOTFILES_REPO]}"
+DOTDIR="${CONFIG[DOTDIR]}"
+BACKUP_DIR="${CONFIG[BACKUP_DIR]}/$(date +%Y-%m-%d_%H-%M-%S)"
 TEMP_DIR="/tmp/dotfiles_temp"
-LOG_FILE="/tmp/deploy.log"
+LOG_DIR="${CONFIG[LOG_DIR]}"
+LOG_FILE="${LOG_DIR}/deploy_$(date +%Y-%m-%d_%H-%M-%S).log"
 
 log_message() {
     local message="$1"
     echo -e "[$(date +'%Y-%m-%d %H:%M:%S')] $message" | tee -a "$LOG_FILE"
 }
 
-# Enhanced safe_exit function with error logging
 safe_exit() {
     local message="$1"
     local code="${2:-1}" # Default exit status 1
-    echo -e "[${RED}✘${NC}] Error: ${message}" | tee -a "$LOG_FILE"
+    echo -e "[${RED}✘${NC}] ${BOLD}Error:${NC} ${message}" | tee -a "$LOG_FILE"
     [ -d "${TEMP_DIR}" ] && rm -rf "${TEMP_DIR}"
     exit "$code"
 }
@@ -32,10 +48,8 @@ execute_command() {
     local command="$1"
     local message="$2"
     local ignore_error="${3:-false}"
-
-    echo -e "[${BLUE}i${NC}] $message"
-    log_message "$message"
-
+    echo -e "[${BLUE}▶${NC}] ${BOLD}Executing:${NC} $message"
+    log_message "[i] $message"
     if $ignore_error; then
         eval "$command" 2>>"$LOG_FILE" || true
     else
@@ -44,40 +58,39 @@ execute_command() {
 }
 
 backup_files() {
-   log_message "[i] Creating backup directory: ${BACKUP_DIR}"
+    log_message "[i] Creating backup directory: ${BACKUP_DIR}"
     mkdir -p "${BACKUP_DIR}" || safe_exit "Could not create backup directory"
-
+    
     log_message "[i] Cloning dotfiles repository..."
     execute_command "git clone --depth=1 \"${DOTFILES_REPO}\" \"${TEMP_DIR}\"" "Cloning dotfiles repository..."
-    execute_command "git --git-dir=\"${DOTDIR}\" --work-tree=\"${HOME}\" checkout" "Checking out dotfiles..."
-
+    
     while IFS= read -r -d '' file; do
         relative_path="${file#"${TEMP_DIR}/"}"
         target_dir="${BACKUP_DIR}/$(dirname "${relative_path}")"
         mkdir -p "${target_dir}"
         if [ -e "${HOME}/${relative_path}" ]; then
-            echo -e "[${YELLOW}i${NC}] Backing up: ${HOME}/${relative_path}"
-            log "[${YELLOW}i${NC}] Backing up: ${HOME}/${relative_path}"
+            echo -e "[${YELLOW}!${NC}] ${BOLD}Backing up:${NC} ${HOME}/${relative_path}"
+            log_message "[i] Backing up: ${HOME}/${relative_path}"
             mv "${HOME}/${relative_path}" "${target_dir}/"
         fi
     done < <(find "${TEMP_DIR}" -type f -print0)
-
+    
     for dir in ".zi"; do
         if [ -d "${HOME}/${dir}" ]; then
-            echo -e "[${YELLOW}i${NC}] Backing up directory: ${HOME}/${dir}"
-            log "[${YELLOW}i${NC}] Backing up directory: ${HOME}/${dir}"
+            echo -e "[${YELLOW}!${NC}] ${BOLD}Backing up directory:${NC} ${HOME}/${dir}"
+            log_message "[i] Backing up directory: ${HOME}/${dir}"
             mv "${HOME}/${dir}" "${BACKUP_DIR}/"
         fi
     done
-
+    
     for file in ".zshrc" ".zshenv" ".zprofile" ".zlogin" ".zlogout" ".zsh_history"; do
         if [ -e "${HOME}/${file}" ]; then
-            echo -e "[${YELLOW}i${NC}] Backing up file: ${HOME}/${file}"
-            log "[${YELLOW}i${NC}] Backing up file: ${HOME}/${file}"
+            echo -e "[${YELLOW}!${NC}] ${BOLD}Backing up file:${NC} ${HOME}/${file}"
+            log_message "[i] Backing up file: ${HOME}/${file}"
             mv "${HOME}/${file}" "${BACKUP_DIR}/"
         fi
     done
-
+    
     rm -rf "${TEMP_DIR}"
 }
 
@@ -90,10 +103,126 @@ initialize_and_checkout_dotfiles() {
     execute_command "git --git-dir=\"${DOTDIR}\" --work-tree=\"${HOME}\" checkout" "Checking out dotfiles..."
 }
 
+create_docker_container() {
+    local workdir="$1"
+    
+    if [ -z "$workdir" ]; then
+        workdir="${HOME}/docker_workbench"
+        mkdir -p "$workdir"
+    fi
+    
+    if docker ps -a --format '{{.Names}}' | grep -Eq "^dotfiles-container$"; then
+        echo -e "[${YELLOW}!${NC}] ${BOLD}Container already exists.${NC} Recreating..."
+        log_message "[i] Container already exists. Recreating..."
+        docker rm -f dotfiles-container
+    fi
+    
+    execute_command "docker build -t dotfiles-image -f ${HOME}/.devcontainer/Dockerfile ." "Building Docker image..."
+    execute_command "docker run -d --name dotfiles-container -v ${workdir}:/home/dotfiles/workspace dotfiles-image" "Creating Docker container..."
+    
+    execute_command "docker cp ${LOG_DIR} dotfiles-container:/home/dotfiles/" "Copying log directory to container..."
+    execute_command "docker exec dotfiles-container rm -rf /home/dotfiles/.dotfiles_log && mv /home/dotfiles/$(basename ${LOG_DIR}) /home/dotfiles/.dotfiles_log" "Moving log directory inside container..."
+    
+    rm -rf "${LOG_DIR}"
+}
+
+restore_dotfiles() {
+    local restore_dir="$1"
+    
+    if [ ! -d "$restore_dir" ]; then
+        echo -e "[${RED}✘${NC}] ${BOLD}Error:${NC} Restore directory does not exist: $restore_dir"
+        return 1
+    fi
+    
+    echo -e "[${BLUE}▶${NC}] ${BOLD}Restoring dotfiles from:${NC} $restore_dir"
+    log_message "[i] Restoring dotfiles from: $restore_dir"
+    
+    cp -r "${restore_dir}/." "${HOME}/"
+    echo -e "[${GREEN}✔${NC}] ${BOLD}Dotfiles restored successfully.${NC}"
+    log_message "[✔] Dotfiles restored successfully."
+}
+
+interactive_mode() {
+    echo -e "${BOLD}Welcome to the Dotfiles Deployment Script!${NC}"
+    echo "This script will guide you through the process of deploying your dotfiles."
+    echo
+    
+    read -q "REPLY?Do you want to proceed? [y/N] "
+    echo
+    
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        backup_files
+        initialize_and_checkout_dotfiles
+        display_success_message
+    else
+        echo "Deployment cancelled by the user."
+        exit 0
+    fi
+}
+
+display_ascii_art() {
+    echo -e "${GREEN}
+    ____        __  ______ __         
+   / __ \____  / /_/ ____// /__  _____
+  / / / / __ \/ __/ /_   / / _ \/ ___/
+ / /_/ / /_/ / /_/ __/  / /  __(__  ) 
+/_____/\____/\__/_/    /_/\___/____/  
+                                      
+${NC}"
+}
+
+display_success_message() {
+    echo -e "
+[${GREEN}✔${NC}] ${BOLD}Dotfiles deployed successfully!${NC}
+
+Deployment details:
+- Dotfiles repository: ${DOTFILES_REPO}
+- Backup directory: ${BACKUP_DIR}
+- Log file: ${LOG_FILE}
+
+Thank you for using the Dotfiles Deployment Script!
+"
+}
+
 main() {
-    log_message "[i] Starting deployment script..."
-    backup_files
-    initialize_and_checkout_dotfiles
+    local mode="$1"
+    local selective_deployment="${2:-false}"
+    local restore_dir="$3"
+    
+    if [[ "$mode" == "--interactive" ]]; then
+        interactive_mode
+        exit 0
+    fi
+    
+    mkdir -p "${LOG_DIR}"
+    log_message "[i] Starting deployment script in mode: ${mode}"
+    
+    display_ascii_art
+    
+    case "$mode" in
+        "--local")
+            backup_files
+            if [[ "$selective_deployment" == "--selective" ]]; then
+                echo -e "[${BLUE}▶${NC}] ${BOLD}Performing selective deployment.${NC}"
+                log_message "[i] Performing selective deployment."
+                # Implement selective deployment logic here
+            else
+                initialize_and_checkout_dotfiles
+            fi
+            ;;
+        "--docker")
+            local workdir="$2"
+            create_docker_container "$workdir"
+            ;;
+        "--restore")
+            restore_dotfiles "$restore_dir"
+            ;;
+        *)
+            safe_exit "Invalid mode. Usage: deploy.sh [--local|--docker [workdir]|--restore [backup_dir]|--interactive]" 1
+            ;;
+    esac
+    
+    display_success_message
     log_message "[✔] Deployment completed successfully."
 }
 
