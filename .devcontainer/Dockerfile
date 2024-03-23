@@ -21,7 +21,7 @@ ENV LC_ALL de_DE.UTF-8
 ENV TERM xterm-256color
 ENV SHELL=/bin/zsh
 
-RUN adduser --disabled-password --gecos '' $USERNAME && \
+RUN useradd -m $USERNAME && \
     adduser $USERNAME sudo && \
     echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers && \
     usermod --shell /bin/zsh $USERNAME

@@ -5,16 +5,14 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        - USERNAME=${USERNAME:-defaultuser}
-        - IMAGE_NAME=${IMAGE_NAME:-default-image-name}
-        - CONTAINER_NAME=${CONTAINER_NAME:-default-container-name}
-    image: "${IMAGE_NAME:-default-image-name}"
-    container_name: "${CONTAINER_NAME:-default-container-name}"
+        USERNAME: ${USERNAME:-developer}
+    image: "${IMAGE_NAME:-my-dev-image}"
+    container_name: "${CONTAINER_NAME:-my-dev-container}"
     volumes:
-      - .:/home/${USERNAME:-defaultuser}/workspace:cached
-      - ~/.ssh:/home/${USERNAME:-defaultuser}/.ssh:cached
+      - .:/home/${USERNAME:-developer}/workspace:cached
+      - ~/.ssh:/home/${USERNAME:-developer}/.ssh:cached
     environment:
-      - USER=${USERNAME:-defaultuser}
-    working_dir: /home/${USERNAME:-defaultuser}/workspace
+      - USER=${USERNAME:-developer}
+    working_dir: /home/${USERNAME:-developer}/workspace
     stdin_open: true
     tty: true
