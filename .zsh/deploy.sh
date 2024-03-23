@@ -43,7 +43,7 @@ log_message() {
 safe_exit() {
     local message="$1"
     local code="${2:-1}" # Default exit status 1
-    echo -e "[${RED}✘${NC}] ${BOLD}Error:${NC} ${message}" | tee -a "$LOG_FILE"
+    print -P "%F{160}▓▒░ %F{196}Error: %F{160}${message}%f%b\n" | tee -a "$LOG_FILE"
     [ -d "${TEMP_DIR}" ] && rm -rf "${TEMP_DIR}"
     exit "$code"
 }
@@ -52,7 +52,7 @@ execute_command() {
     local command="$1"
     local message="$2"
     local ignore_error="${3:-false}"
-    echo -e "[${BLUE}▶${NC}] ${BOLD}Executing:${NC} $message"
+    print -P "%F{33}▓▒░ %F{39}Executing: %F{33}${message}%f%b\n"
     log_message "[i] $message"
     if $ignore_error; then
         eval "$command" 2>>"$LOG_FILE" || true
@@ -65,7 +65,6 @@ download_file() {
     local url="$1"
     local target_file="$2"
     local message="$3"
-    
     execute_command "curl -Lks '$url' -o '$target_file'" "$message"
 }
 
@@ -81,7 +80,7 @@ backup_files() {
         target_dir="${BACKUP_DIR}/$(dirname "${relative_path}")"
         mkdir -p "${target_dir}"
         if [ -e "${HOME}/${relative_path}" ]; then
-            echo -e "[${YELLOW}!${NC}] ${BOLD}Backing up:${NC} ${HOME}/${relative_path}"
+            print -P "%F{220}▓▒░ %F{11}Backing up: %F{220}${HOME}/${relative_path}%f%b\n"
             log_message "[i] Backing up: ${HOME}/${relative_path}"
             mv "${HOME}/${relative_path}" "${target_dir}/"
         fi
@@ -89,7 +88,7 @@ backup_files() {
     
     for dir in ".zi"; do
         if [ -d "${HOME}/${dir}" ]; then
-            echo -e "[${YELLOW}!${NC}] ${BOLD}Backing up directory:${NC} ${HOME}/${dir}"
+            print -P "%F{220}▓▒░ %F{11}Backing up directory: %F{220}${HOME}/${dir}%f%b\n"
             log_message "[i] Backing up directory: ${HOME}/${dir}"
             mv "${HOME}/${dir}" "${BACKUP_DIR}/"
         fi
@@ -97,7 +96,7 @@ backup_files() {
     
     for file in ".zshrc" ".zshenv" ".zprofile" ".zlogin" ".zlogout" ".zsh_history"; do
         if [ -e "${HOME}/${file}" ]; then
-            echo -e "[${YELLOW}!${NC}] ${BOLD}Backing up file:${NC} ${HOME}/${file}"
+            print -P "%F{220}▓▒░ %F{11}Backing up file: %F{220}${HOME}/${file}%f%b\n"
             log_message "[i] Backing up file: ${HOME}/${file}"
             mv "${HOME}/${file}" "${BACKUP_DIR}/"
         fi
@@ -124,7 +123,7 @@ create_docker_container() {
     fi
     
     if docker ps -a --format '{{.Names}}' | grep -Eq "^dotfiles-container$"; then
-        echo -e "[${YELLOW}!${NC}] ${BOLD}Container already exists.${NC} Recreating..."
+        print -P "%F{220}▓▒░ %F{11}Container already exists. %F{220}Recreating...%f%b\n"
         log_message "[i] Container already exists. Recreating..."
         docker rm -f dotfiles-container
     fi
@@ -148,24 +147,31 @@ create_docker_container() {
 }
 
 display_ascii_art() {
-    echo -e "${GREEN}
-    ____        __  ______ __         
-   / __ \____  / /_/ ____// /__  _____
-  / / / / __ \/ __/ /_   / / _ \/ ___/
- / /_/ / /_/ / /_/ __/  / /  __(__  ) 
-/_____/\____/\__/_/    /_/\___/____/  
-                                      
-${NC}"
+    print -P "
+%F{33}    ____        __  ______ __           
+   / __ \____  / /_/ ____// /__  _____  
+  / / / / __ \/ __/ /_   / / _ \/ ___/  
+ / /_/ / /_/ / /_/ __/  / /  __(__  )   
+/_____/\____/\__/_/    /_/\___/____/    
+                                        
+%F{39}    ___             __           
+   /   \___  ____  / /___  __  __
+  / /\ / _ \/ __ \/ / __ \/ / / /
+ / /_// (_) / /_/ / / /_/ / /_/ / 
+/___,' \___/ .___/_/\____/\__, /  
+          /_/            /____/   
+%f%b
+"
 }
 
 display_success_message() {
-    echo -e "
-[${GREEN}✔${NC}] ${BOLD}Dotfiles deployed successfully!${NC}
+    print -P "
+%F{46}▓▒░ %F{49}Dotfiles deployed successfully!%f%b
 
 Deployment details:
-- Dotfiles repository: ${DOTFILES_REPO}
-- Backup directory: ${BACKUP_DIR}
-- Log file: ${LOG_FILE}
+- Dotfiles repository: %F{39}${DOTFILES_REPO}%f%b
+- Backup directory: %F{39}${BACKUP_DIR}%f%b
+- Log file: %F{39}${LOG_FILE}%f%b
 
 Thank you for using the Dotfiles Deployment Script!
 "
@@ -190,7 +196,7 @@ main() {
         "--local")
             backup_files
             if [[ "$selective_deployment" == "--selective" ]]; then
-                echo -e "[${BLUE}▶${NC}] ${BOLD}Performing selective deployment.${NC}"
+                print -P "%F{33}▓▒░ %F{39}Performing selective deployment.%f%b\n"
                 log_message "[i] Performing selective deployment."
                 # Implement selective deployment logic here
             else
