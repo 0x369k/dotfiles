@@ -15,6 +15,8 @@ CONFIG=(
     DOTDIR "${HOME}/.dotfiles"
     BACKUP_DIR "${HOME}/.dotfiles_backup"
     LOG_DIR "${HOME}/.dotfiles_log"
+    DOCKERFILE_URL "https://raw.githubusercontent.com/0x369k/dotfiles/main/.devcontainer/Dockerfile"
+    DOCKER_COMPOSE_FILE_URL "https://raw.githubusercontent.com/0x369k/dotfiles/main/.devcontainer/docker-compose.yml"
 )
 
 # Load user configuration if available
@@ -30,6 +32,8 @@ BACKUP_DIR="${CONFIG[BACKUP_DIR]}/$(date +%Y-%m-%d_%H-%M-%S)"
 TEMP_DIR="/tmp/dotfiles_temp"
 LOG_DIR="${CONFIG[LOG_DIR]}"
 LOG_FILE="${LOG_DIR}/deploy_$(date +%Y-%m-%d_%H-%M-%S).log"
+DOCKERFILE_URL="${CONFIG[DOCKERFILE_URL]}"
+DOCKER_COMPOSE_FILE_URL="${CONFIG[DOCKER_COMPOSE_FILE_URL]}"
 
 log_message() {
     local message="$1"
@@ -55,6 +59,14 @@ execute_command() {
     else
         eval "$command" 2>>"$LOG_FILE" || safe_exit "Failed to execute: $command" 2
     fi
+}
+
+download_file() {
+    local url="$1"
+    local target_file="$2"
+    local message="$3"
+    
+    execute_command "curl -Lks '$url' -o '$target_file'" "$message"
 }
 
 backup_files() {
@@ -117,6 +129,15 @@ create_docker_container() {
         docker rm -f dotfiles-container
     fi
     
+    # Download required files if not available locally
+    if [ ! -f "${HOME}/.devcontainer/Dockerfile" ]; then
+        download_file "${DOCKERFILE_URL}" "${HOME}/.devcontainer/Dockerfile" "Downloading Dockerfile..."
+    fi
+    
+    if [ ! -f "${HOME}/.devcontainer/docker-compose.yml" ]; then
+        download_file "${DOCKER_COMPOSE_FILE_URL}" "${HOME}/.devcontainer/docker-compose.yml" "Downloading docker-compose.yml..."
+    fi
+    
     execute_command "docker build -t dotfiles-image -f ${HOME}/.devcontainer/Dockerfile ." "Building Docker image..."
     execute_command "docker run -d --name dotfiles-container -v ${workdir}:/home/dotfiles/workspace dotfiles-image" "Creating Docker container..."
     
@@ -124,40 +145,6 @@ create_docker_container() {
     execute_command "docker exec dotfiles-container rm -rf /home/dotfiles/.dotfiles_log && mv /home/dotfiles/$(basename ${LOG_DIR}) /home/dotfiles/.dotfiles_log" "Moving log directory inside container..."
     
     rm -rf "${LOG_DIR}"
-}
-
-restore_dotfiles() {
-    local restore_dir="$1"
-    
-    if [ ! -d "$restore_dir" ]; then
-        echo -e "[${RED}✘${NC}] ${BOLD}Error:${NC} Restore directory does not exist: $restore_dir"
-        return 1
-    fi
-    
-    echo -e "[${BLUE}▶${NC}] ${BOLD}Restoring dotfiles from:${NC} $restore_dir"
-    log_message "[i] Restoring dotfiles from: $restore_dir"
-    
-    cp -r "${restore_dir}/." "${HOME}/"
-    echo -e "[${GREEN}✔${NC}] ${BOLD}Dotfiles restored successfully.${NC}"
-    log_message "[✔] Dotfiles restored successfully."
-}
-
-interactive_mode() {
-    echo -e "${BOLD}Welcome to the Dotfiles Deployment Script!${NC}"
-    echo "This script will guide you through the process of deploying your dotfiles."
-    echo
-    
-    read -q "REPLY?Do you want to proceed? [y/N] "
-    echo
-    
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        backup_files
-        initialize_and_checkout_dotfiles
-        display_success_message
-    else
-        echo "Deployment cancelled by the user."
-        exit 0
-    fi
 }
 
 display_ascii_art() {
