@@ -140,7 +140,11 @@ create_docker_container() {
     execute_command "docker build -t dotfiles-image -f ${HOME}/.devcontainer/Dockerfile ." "Building Docker image..."
     execute_command "docker run -d --name dotfiles-container -v ${workdir}:/home/dotfiles/workspace dotfiles-image" "Creating Docker container..."
     execute_command "docker cp ${LOG_DIR} dotfiles-container:/home/dotfiles/" "Copying log directory to container..."
-    execute_command "docker exec dotfiles-container sh -c 'rm -rf /home/dotfiles/.dotfiles_log && mv /home/dotfiles/$(basename ${LOG_DIR}) /home/dotfiles/.dotfiles_log'" "Moving log directory inside container..."
+
+    # Move log directory inside container without using subshell
+    docker exec dotfiles-container sh -c "rm -rf /home/dotfiles/.dotfiles_log"
+    docker exec dotfiles-container sh -c "mv /home/dotfiles/$(basename ${LOG_DIR}) /home/dotfiles/.dotfiles_log"
+
     rm -rf "${LOG_DIR}"
 }
 
