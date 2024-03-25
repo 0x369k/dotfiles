@@ -26,8 +26,9 @@ RUN useradd -m $USERNAME && \
 # Als der erstellte Benutzer arbeiten und ins Home-Verzeichnis wechseln
 USER $USERNAME
 WORKDIR /home/$USERNAME
-# Benutzerumgebung einrichten
-RUN curl -Lks https://raw.githubusercontent.com/0x369k/dotfiles/main/.zsh/deploy.sh -o deploy.sh && \
-    chmod +x deploy.sh
-ENTRYPOINT ["/bin/zsh", "-i", "-c"]
-CMD ["cd workspace && ./deploy.sh --local"]
+# Hinzufügen des deploy.sh Skripts zum Image
+COPY deploy.sh /deploy.sh
+RUN chmod +x /deploy.sh
+
+# Definieren des deploy.sh Skripts als Einstiegspunkt
+ENTRYPOINT ["/deploy.sh"]

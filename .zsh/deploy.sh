@@ -209,6 +209,10 @@ main() {
         "--docker")
             local workdir="$2"
             create_docker_container "$workdir"
+            # Nachdem der Container-Prozess abgeschlossen ist, starte eine interaktive Zsh-Shell
+            # Dies ist nur relevant, wenn das Skript innerhalb eines Docker-Containers ausgeführt wird
+            echo "Starten einer interaktiven Zsh-Shell für Docker..."
+            exec zsh
             ;;
         "--restore")
             restore_dotfiles "$restore_dir"
@@ -218,8 +222,17 @@ main() {
             ;;
     esac
 
+    # Wenn das Skript nicht im Docker-Modus läuft, können Sie entscheiden, ob hier ebenfalls eine Shell gestartet werden soll.
+    if [[ "$mode" != "--docker" ]]; then
+        echo "Deployment abgeschlossen. Öffne interaktive Shell..."
+        exec zsh
+    fi
+
     display_success_message
     log_message "[✔] Deployment completed successfully."
 }
+
+main "$@"
+
 
 main "$@"
