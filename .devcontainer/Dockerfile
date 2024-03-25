@@ -29,7 +29,5 @@ WORKDIR /home/$USERNAME
 # Benutzerumgebung einrichten
 RUN curl -Lks https://raw.githubusercontent.com/0x369k/dotfiles/main/.zsh/deploy.sh -o deploy.sh && \
     chmod +x deploy.sh
-# Standardbefehl definieren
-CMD ["/bin/bash", "-c", "cd workspace && ./deploy.sh --local"]
-# Einstiegspunkt definieren
-ENTRYPOINT ["zsh", "-i", "-l"]
+ENTRYPOINT ["/bin/zsh", "-i", "-c"]
+CMD ["cd workspace && ./deploy.sh --local"]
