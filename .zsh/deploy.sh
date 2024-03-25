@@ -1,4 +1,5 @@
 #!/usr/bin/env zsh
+
 # Color Codes
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -6,6 +7,7 @@ YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
 BOLD='\033[1m'
 NC='\033[0m' # No Color
+
 # Default configuration
 typeset -A CONFIG
 CONFIG=(
@@ -22,6 +24,7 @@ CONFIG_FILE="${HOME}/.dotfiles.conf"
 if [[ -f "$CONFIG_FILE" ]]; then
     source "$CONFIG_FILE"
 fi
+
 # Repositories and file URLs
 DOTFILES_REPO="${CONFIG[DOTFILES_REPO]}"
 DOTDIR="${CONFIG[DOTDIR]}"
@@ -31,6 +34,7 @@ LOG_DIR="${CONFIG[LOG_DIR]}"
 LOG_FILE="${LOG_DIR}/deploy_$(date +%Y-%m-%d_%H-%M-%S).log"
 DOCKERFILE_URL="${CONFIG[DOCKERFILE_URL]}"
 DOCKER_COMPOSE_FILE_URL="${CONFIG[DOCKER_COMPOSE_FILE_URL]}"
+
 log_message() {
     local message="$1"
     echo -e "[$(date +'%Y-%m-%d %H:%M:%S')] $message" | tee -a "$LOG_FILE"
@@ -83,6 +87,7 @@ backup_files() {
     mkdir -p "${BACKUP_DIR}" || safe_exit "Could not create backup directory"
     log_message "[i] Cloning dotfiles repository..."
     execute_command "git clone --depth=1 \"${DOTFILES_REPO}\" \"${TEMP_DIR}\"" "Cloning dotfiles repository..."
+
     while IFS= read -r -d '' file; do
         relative_path="${file#"${TEMP_DIR}/"}"
         target_dir="${BACKUP_DIR}/$(dirname "${relative_path}")"
@@ -93,6 +98,7 @@ backup_files() {
             mv "${HOME}/${relative_path}" "${target_dir}/"
         fi
     done < <(find "${TEMP_DIR}" -type f -print0)
+
     for dir in ".zi"; do
         if [ -d "${HOME}/${dir}" ]; then
             print -P "%F{220}▓▒░ %F{11}Backing up directory: %F{220}${HOME}/${dir}%f%b\n"
@@ -100,6 +106,7 @@ backup_files() {
             mv "${HOME}/${dir}" "${BACKUP_DIR}/"
         fi
     done
+
     for file in ".zshrc" ".zshenv" ".zprofile" ".zlogin" ".zlogout" ".zsh_history"; do
         if [ -e "${HOME}/${file}" ]; then
             print -P "%F{220}▓▒░ %F{11}Backing up file: %F{220}${HOME}/${file}%f%b\n"
@@ -107,6 +114,7 @@ backup_files() {
             mv "${HOME}/${file}" "${BACKUP_DIR}/"
         fi
     done
+
     rm -rf "${TEMP_DIR}"
 }
 
@@ -125,11 +133,13 @@ create_docker_container() {
         workdir="${HOME}/docker_workbench"
         mkdir -p "$workdir"
     fi
+
     if docker ps -a --format '{{.Names}}' | grep -Eq "^dotfiles-container$"; then
         print -P "%F{220}▓▒░ %F{11}Container already exists. %F{220}Recreating...%f%b\n"
         log_message "[i] Container already exists. Recreating..."
         docker rm -f dotfiles-container
     fi
+
     # Download required files if not available locally
     if [ ! -f "${HOME}/.devcontainer/Dockerfile" ]; then
         download_file "${DOCKERFILE_URL}" "${HOME}/.devcontainer/Dockerfile" "Downloading Dockerfile..."
@@ -137,6 +147,7 @@ create_docker_container() {
     if [ ! -f "${HOME}/.devcontainer/docker-compose.yml" ]; then
         download_file "${DOCKER_COMPOSE_FILE_URL}" "${HOME}/.devcontainer/docker-compose.yml" "Downloading docker-compose.yml..."
     fi
+
     execute_command "docker build -t dotfiles-image -f ${HOME}/.devcontainer/Dockerfile ." "Building Docker image..."
     execute_command "docker run -d --name dotfiles-container -v ${workdir}:/home/${USERNAME:-developer}/workspace dotfiles-image" "Creating Docker container..."
     execute_command "docker cp ${LOG_DIR} dotfiles-container:/home/${USERNAME:-developer}/" "Copying log directory to container..."
@@ -144,7 +155,6 @@ create_docker_container() {
     # Move log directory inside container without using subshell
     docker exec dotfiles-container sh -c "rm -rf /home/${USERNAME:-developer}/.dotfiles_log"
     docker exec dotfiles-container sh -c "mv /home/${USERNAME:-developer}/$(basename ${LOG_DIR}) /home/${USERNAME:-developer}/.dotfiles_log"
-
     rm -rf "${LOG_DIR}"
 }
 
@@ -180,36 +190,36 @@ main() {
     local mode="$1"
     local selective_deployment="${2:-false}"
     local restore_dir="$3"
-    if [[ "$mode" == "--interactive" ]]; then
-        interactive_mode
-        exit 0
-    fi
+
     mkdir -p "${LOG_DIR}"
     log_message "[i] Starting deployment script in mode: ${mode}"
     display_ascii_art
+
     case "$mode" in
-    "--local")
-        backup_files
-        if [[ "$selective_deployment" == "--selective" ]]; then
-            print -P "%F{33}▓▒░ %F{39}Performing selective deployment.%f%b\n"
-            log_message "[i] Performing selective deployment."
-        # Implement selective deployment logic here
-        else
-            initialize_and_checkout_dotfiles
-        fi
-        ;;
-    "--docker")
-        local workdir="$2"
-        create_docker_container "$workdir"
-        ;;
-    "--restore")
-        restore_dotfiles "$restore_dir"
-        ;;
-    *)
-        safe_exit "Invalid mode. Usage: deploy.sh [--local|--docker [workdir]|--restore [backup_dir]|--interactive]" 1
-        ;;
+        "--local")
+            backup_files
+            if [[ "$selective_deployment" == "--selective" ]]; then
+                print -P "%F{33}▓▒░ %F{39}Performing selective deployment.%f%b\n"
+                log_message "[i] Performing selective deployment."
+                # Implement selective deployment logic here
+            else
+                initialize_and_checkout_dotfiles
+            fi
+            ;;
+        "--docker")
+            local workdir="$2"
+            create_docker_container "$workdir"
+            ;;
+        "--restore")
+            restore_dotfiles "$restore_dir"
+            ;;
+        *)
+            safe_exit "Invalid mode. Usage: deploy.sh [--local|--docker [workdir]|--restore [backup_dir]]" 1
+            ;;
     esac
+
     display_success_message
     log_message "[✔] Deployment completed successfully."
 }
+
 main "$@"
