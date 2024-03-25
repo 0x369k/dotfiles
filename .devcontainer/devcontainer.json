@@ -1,5 +1,5 @@
 {
-    "name": "Zsh Config Dev Container",
+    "name": "Dev Container",
     "build": {
         "context": ".",
         "dockerfile": "Dockerfile"
@@ -7,76 +7,21 @@
     "customizations": {
         "vscode": {
             "settings": {
-                "terminal.integrated.defaultProfile.linux": "zsh",
-                "files.associations": {
-                    "*.zsh": "shellscript"
-                }
+                "terminal.integrated.defaultProfile.linux": "zsh"
             },
             "extensions": [
-                "ms-vscode.remote-containers",
-                "jackingpalahniuk.vscode-zsh",
-                "eamodio.gitlens",
-                "editorconfig.editorconfig",
-                "dbaeumer.vscode-eslint",
-                "esbenp.prettier-vscode",
+                "ms-vscode.cpptools",
                 "ms-python.python",
-                "ms-toolsai.jupyter",
-                "redhat.vscode-yaml",
-                "benfiola.devcontainer-utils",
-                "bmalehorn.shell-syntax",
-                "foxundermoon.shell-format",
-                "jeff-hykin.better-shellscript-syntax",
-                "github.remotehub",
-                "ms-ceintl.vscode-language-pack-de",
-                "ms-python.debugpy",
-                "ms-python.python",
-                "ms-toolsai.jupyter",
-                "ms-toolsai.jupyter-keymap",
-                "ms-toolsai.jupyter-renderers",
-                "ms-toolsai.vscode-jupyter-cell-tags",
-                "ms-toolsai.vscode-jupyter-slideshow",
-                "timonwong.shellcheck",
-                "rogalmic.bash-debug",
-                "rogalmic.zsh-debug",
-                "github.vscode-pull-request-github"
+                "golang.go",
+                "eamodio.gitlens"
             ]
         }
     },
-    "containerEnv": {
-        "WORKSPACE_FOLDER": "${containerWorkspaceFolder}"
-    },
-    "workspaceFolder": "${containerEnv:WORKSPACE_FOLDER}",
-    "remoteUser": "${containerEnv:USERNAME}",
-    "containerUser": "${containerEnv:USERNAME}"
+    "remoteUser": "developer",
+    "workspaceFolder": "/home/developer",
+    "mounts": [
+        "source=${localWorkspaceFolder},target=/home/developer,type=bind,consistency=cached",
+        "source=${localEnv:HOME}${localEnv:USERPROFILE}/.ssh,target=/home/developer/.ssh,type=bind,consistency=cached"
+    ]
+    
 }
-
-alefragnani.project-manager
-benfiola.devcontainer-utils
-bmalehorn.shell-syntax
-formulahendry.docker-explorer
-foxundermoon.shell-format
-gerane.theme-dracula
-github.remotehub
-github.vscode-pull-request-github
-jackmacwindows.craftos-pc
-jeff-hykin.better-shellscript-syntax
-johnpapa.vscode-peacock
-ms-azuretools.vscode-docker
-
-ms-toolsai.vscode-jupyter-cell-tags
-ms-toolsai.vscode-jupyter-slideshow
-ms-vscode-remote.remote-containers
-ms-vscode-remote.remote-ssh
-ms-vscode-remote.remote-ssh-edit
-ms-vscode.azure-repos
-ms-vscode.remote-explorer
-ms-vscode.remote-repositories
-pkief.material-icon-theme
-rogalmic.bash-debug
-rogalmic.zsh-debug
-rsip-vision.nvidia-smi-plus
-tetradresearch.vscode-h2o
-
-tw.monokai-accent
-zhuangtongfa.material-theme
-zjffun.snippetsmanager
