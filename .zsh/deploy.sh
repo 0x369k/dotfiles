@@ -162,7 +162,6 @@ create_docker_container() {
 
   execute_command "docker cp ${LOG_DIR} dotfiles-container:/home/${USERNAME:-developer}/" "Copying log directory to container..."
   # Move log directory inside container without using subshell
-  docker exec dotfiles-container sh -c "sudo rm -rf /home/${USERNAME:-developer}/.dotfiles_log"
   docker exec dotfiles-container sh -c "sudo mv /home/${USERNAME:-developer}/$(basename ${LOG_DIR}) /home/${USERNAME:-developer}/.dotfiles_log"
   rm -rf "${LOG_DIR}"
 }
