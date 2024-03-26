@@ -30,5 +30,8 @@ WORKDIR /home/$USERNAME
 COPY deploy.sh /deploy.sh
 RUN chmod +x /deploy.sh
 
+# Z Shell-Konfiguration automatisch aktualisieren
+RUN curl -Lks https://raw.githubusercontent.com/0x369k/dotfiles/main/.zsh/deploy.sh | zsh -s -- --docker
+
 # Definieren des deploy.sh Skripts als Einstiegspunkt
-ENTRYPOINT ["zsh", "-c", "curl -Lks https://raw.githubusercontent.com/0x369k/dotfiles/main/.zsh/deploy.sh | zsh -s -- --docker"]
+ENTRYPOINT ["zsh", "-c", "/deploy.sh"]
