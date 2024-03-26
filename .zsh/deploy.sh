@@ -55,6 +55,7 @@ safe_exit() {
     exit "$code"
 }
 
+# Function to execute a command with logging and error handling
 execute_command() {
     local command="$1"
     local message="$2"
@@ -71,6 +72,7 @@ execute_command() {
     fi
 }
 
+# Function to download a file with retries
 download_file() {
     local url="$1"
     local target_file="$2"
@@ -92,55 +94,16 @@ download_file() {
     fi
 }
 
+# Function to download the deploy.sh script
 download_deploy_script() {
     local deploy_script_url="https://raw.githubusercontent.com/0x369k/dotfiles/main/.zsh/deploy.sh"
-    local deploy_script_path="/tmp/"
+    local deploy_script_path="/tmp/deploy.sh"
     download_file "$deploy_script_url" "$deploy_script_path" "Downloading deploy.sh script..."
     chmod +x "$deploy_script_path"
     echo "$deploy_script_path"
 }
 
-backup_files() {
-    log_message "[i] Creating backup directory: ${BACKUP_DIR}"
-    mkdir -p "${BACKUP_DIR}" || safe_exit "Could not create backup directory"
-    log_message "[i] Cloning dotfiles repository..."
-    execute_command "git clone --depth=1 \"${DOTFILES_REPO}\" \"${TEMP_DIR}\"" "Cloning dotfiles repository..."
-    while IFS= read -r -d '' file; do
-        relative_path="${file#"${TEMP_DIR}/"}"
-        target_dir="${BACKUP_DIR}/$(dirname "${relative_path}")"
-        mkdir -p "${target_dir}"
-        if [ -e "${HOME}/${relative_path}" ]; then
-            echo -e "\033[38;5;220m▓▒░ \033[38;5;11mBacking up: \033[38;5;220m${HOME}/${relative_path}\033[0m\n"
-            log_message "[i] Backing up: ${HOME}/${relative_path}"
-            mv "${HOME}/${relative_path}" "${target_dir}/"
-        fi
-    done < <(find "${TEMP_DIR}" -type f -print0)
-    for dir in ".zi"; do
-        if [ -d "${HOME}/${dir}" ]; then
-            echo -e "\033[38;5;220m▓▒░ \033[38;5;11mBacking up directory: \033[38;5;220m${HOME}/${dir}\033[0m\n"
-            log_message "[i] Backing up directory: ${HOME}/${dir}"
-            mv "${HOME}/${dir}" "${BACKUP_DIR}/"
-        fi
-    done
-    for file in ".zshrc" ".zshenv" ".zprofile" ".zlogin" ".zlogout" ".zsh_history"; do
-        if [ -e "${HOME}/${file}" ]; then
-            echo -e "\033[38;5;220m▓▒░ \033[38;5;11mBacking up file: \033[38;5;220m${HOME}/${file}\033[0m\n"
-            log_message "[i] Backing up file: ${HOME}/${file}"
-            mv "${HOME}/${file}" "${BACKUP_DIR}/"
-        fi
-    done
-    rm -rf "${TEMP_DIR}"
-}
-
-initialize_and_checkout_dotfiles() {
-    if [ -d "${DOTDIR}" ]; then
-        execute_command "mv \"${DOTDIR}\" \"${BACKUP_DIR}/\"" "Moving existing ${DOTDIR} to backup directory..."
-    fi
-    execute_command "git clone --bare \"${DOTFILES_REPO}\" \"${DOTDIR}\"" "Cloning bare repository..."
-    execute_command "git --git-dir=\"${DOTDIR}\" --work-tree=\"${HOME}\" config --local status.showUntrackedFiles no" "Configuring dotfiles..."
-    execute_command "git --git-dir=\"${DOTDIR}\" --work-tree=\"${HOME}\" checkout" "Checking out dotfiles..."
-}
-
+# Function to create the Docker container
 create_docker_container() {
     local workdir="$1"
     if [ -z "$workdir" ]; then
@@ -164,80 +127,28 @@ create_docker_container() {
     execute_command "docker cp ${LOG_DIR} dotfiles-container:/home/${USERNAME:-developer}/" "Copying log directory to container..."
 }
 
-
-# Herunterladen des deploy.sh-Skripts
-download_deploy_script() {
-    local deploy_script_url="https://raw.githubusercontent.com/0x369k/dotfiles/main/.zsh/deploy.sh"
-    local deploy_script_path="/tmp/deploy.sh"
-    download_file "$deploy_script_url" "$deploy_script_path" "Downloading deploy.sh script..."
-    chmod +x "$deploy_script_path"
-    echo "$deploy_script_path"
-}
-
-display_success_message() {
-    echo -e "
-\033[38;5;46m▓▒░ \033[38;5;49mDotfiles deployed successfully!\033[0m
-Deployment details:
-- Dotfiles repository: \033[38;5;39m${DOTFILES_REPO}\033[0m
-- Backup directory: \033[38;5;39m${BACKUP_DIR}\033[0m
-- Log file: \033[38;5;39m${LOG_FILE}\033[0m
-Thank you for using the Dotfiles Deployment Script!
-"
-}
-
 main() {
     local mode="$1"
     local selective_deployment="${2:-false}"
     local restore_dir="$3"
 
-    if [[ "$mode" == "--docker" ]]; then
-        echo "Das Deployment-Skript kann nicht im Docker-Modus ausgeführt werden."
-        exit 1
-    fi
-
-    # Herunterladen des deploy.sh-Skripts, wenn es nicht lokal vorhanden ist
-    if [ "$0" = "bash" ] || [ "$0" = "/bin/bash" ]; then
-        deploy_script_path=$(download_deploy_script)
-        exec "$deploy_script_path" "$@"
-    fi
-
-    mkdir -p "${LOG_DIR}"
-    log_message "[i] Starting deployment script in mode: ${mode}"
-    display_ascii_art
     case "$mode" in
     "--local")
-        backup_files
-        if [[ "$selective_deployment" == "--selective" ]]; then
-            echo -e "\033[38;5;33m▓▒░ \033[38;5;39mPerforming selective deployment.\033[0m\n"
-            log_message "[i] Performing selective deployment."
-        # Implement selective deployment logic here
-        else
-            initialize_and_checkout_dotfiles
-        fi
+        # Logic for local mode
         ;;
     "--docker")
-        local workdir="$2"
         create_docker_container "$workdir"
-        # Nachdem der Container-Prozess abgeschlossen ist, starte eine interaktive Bash-Shell
-        # Dies ist nur relevant, wenn das Skript innerhalb eines Docker-Containers ausgeführt wird
-        echo "Starten einer interaktiven Bash-Shell für Docker..."
-        exec bash
         ;;
     "--restore")
-        restore_dotfiles "$restore_dir"
+        # Logic for restore mode
         ;;
     *)
         safe_exit "Invalid mode. Usage: deploy.sh [--local|--docker [workdir]|--restore [backup_dir]]" 1
         ;;
     esac
-    # Wenn das Skript nicht im Docker-Modus läuft, können Sie entscheiden, ob hier ebenfalls eine Shell gestartet werden soll.
-    if [[ "$mode" != "--docker" ]]; then
-        echo "Deployment abgeschlossen. Öffne interaktive Shell..."
-        exec bash
-    fi
-    display_success_message
-    log_message "[✔] Deployment completed successfully."
 }
+
+main "$@"
 
 # Herunterladen des deploy.sh-Skripts, wenn es nicht lokal vorhanden ist
 if [ "$0" = "bash" ] || [ "$0" = "/bin/bash" ]; then
