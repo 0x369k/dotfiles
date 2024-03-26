@@ -44,7 +44,6 @@ safe_exit() {
     local message="$1"
     local code="${2:-1}" # Default exit status 1
     print -P "%F{160}▓▒░ %F{196}Error: %F{160}${message}%f%b\n" | tee -a "$LOG_FILE"
-    [ -d "${TEMP_DIR}" ] && rm -rf "${TEMP_DIR}"
     exit "$code"
 }
 
@@ -57,7 +56,7 @@ execute_command() {
     if $ignore_error; then
         eval "$command" 2>>"$LOG_FILE" || true
     else
-        eval "$command" 2>>"$LOG_FILE" || safe_exit "Failed to execute: $command" 2
+        eval "$command" 2>>"$LOG_FILE" || { log_message "Failed to execute: $command"; return 1; }
     fi
 }
 
@@ -231,8 +230,5 @@ main() {
     display_success_message
     log_message "[✔] Deployment completed successfully."
 }
-
-main "$@"
-
 
 main "$@"

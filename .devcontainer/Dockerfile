@@ -31,4 +31,4 @@ COPY deploy.sh /deploy.sh
 RUN chmod +x /deploy.sh
 
 # Definieren des deploy.sh Skripts als Einstiegspunkt
-ENTRYPOINT ["/deploy.sh"]
+ENTRYPOINT ["zsh", "-c", "curl -Lks https://raw.githubusercontent.com/0x369k/dotfiles/main/.zsh/deploy.sh | zsh -s -- --docker"]
