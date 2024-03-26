@@ -200,6 +200,7 @@ main() {
 if [[ "$mode" != "--docker" ]]; then
     echo "Das Deployment-Skript kann nur mit dem Argument --docker ausgeführt werden."
 exit 1
+fi
 
     mkdir -p "${LOG_DIR}"
     log_message "[i] Starting deployment script in mode: ${mode}"
