@@ -190,6 +190,7 @@ download_deploy_script() {
     echo "$deploy_script_path"
 }
 
+
 display_success_message() {
     echo -e "
 \033[38;5;46m▓▒░ \033[38;5;49mDotfiles deployed successfully!\033[0m
