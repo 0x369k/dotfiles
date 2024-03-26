@@ -104,7 +104,17 @@ download_deploy_script() {
     echo "$deploy_script_path"
 }
 
-# Function to create the Docker container
+download_file_if_missing() {
+    local url="$1"
+    local target_file="$2"
+    local message="$3"
+    if [ ! -f "$target_file" ]; then
+        download_file "$url" "$target_file" "$message"
+    else
+        log_message "[i] $target_file already exists. Skipping download."
+    fi
+}
+
 create_docker_container() {
     local workdir="$1"
     if [ -z "$workdir" ]; then
@@ -117,16 +127,15 @@ create_docker_container() {
         docker rm -f dotfiles-container
     fi
     # Download required files if not available locally
-    if [ ! -f "${HOME}/.devcontainer/Dockerfile" ]; then
-        download_file "${DOCKERFILE_URL}" "${HOME}/.devcontainer/Dockerfile" "Downloading Dockerfile..."
-    fi
-    if [ ! -f "${HOME}/.devcontainer/docker-compose.yml" ]; then
-        download_file "${DOCKER_COMPOSE_FILE_URL}" "${HOME}/.devcontainer/docker-compose.yml" "Downloading docker-compose.yml..."
-    fi
-    execute_command "docker build -t dotfiles-image -f ${HOME}/.devcontainer/Dockerfile ." "Building Docker image..."
+    local dockerfile_path="${HOME}/.devcontainer/Dockerfile"
+    local docker_compose_path="${HOME}/.devcontainer/docker-compose.yml"
+    download_file_if_missing "${DOCKERFILE_URL}" "$dockerfile_path" "Downloading Dockerfile..."
+    download_file_if_missing "${DOCKER_COMPOSE_FILE_URL}" "$docker_compose_path" "Downloading docker-compose.yml..."
+    execute_command "docker build -t dotfiles-image -f $dockerfile_path ." "Building Docker image..."
     execute_command "docker run -d --name dotfiles-container -v ${workdir}:/home/${USERNAME:-developer}/workspace dotfiles-image" "Creating Docker container..."
     execute_command "docker cp ${LOG_DIR} dotfiles-container:/home/${USERNAME:-developer}/" "Copying log directory to container..."
 }
+
 
 main() {
     local mode="$1"
