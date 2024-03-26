@@ -30,4 +30,6 @@ WORKDIR /home/$USERNAME
 COPY deploy.sh /deploy.sh
 RUN chmod +x /deploy.sh
 # Definieren des deploy.sh Skripts als Einstiegspunkt
-ENTRYPOINT ["bash", "-c", "curl -Lks https://raw.githubusercontent.com/0x369k/dotfiles/main/.bash/deploy.sh | bash -s -- --docker"]
+  COPY deploy.sh /deploy.sh
+   RUN chmod +x /deploy.sh
+   ENTRYPOINT ["/deploy.sh", "--docker"]
