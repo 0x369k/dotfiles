@@ -26,7 +26,7 @@ ENV SHELL=/bin/bash
 RUN useradd -m $USERNAME && \
     adduser $USERNAME sudo && \
     echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers && \
-    usermod --shell /bin/bash $USERNAME
+    usermod --shell /bin/zsh $USERNAME
 
 # Als der erstellte Benutzer arbeiten und ins Home-Verzeichnis wechseln
 USER $USERNAME
