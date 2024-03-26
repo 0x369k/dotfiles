@@ -35,6 +35,15 @@ LOG_FILE="${LOG_DIR}/deploy_$(date +%Y-%m-%d_%H-%M-%S).log"
 DOCKERFILE_URL="${CONFIG[DOCKERFILE_URL]}"
 DOCKER_COMPOSE_FILE_URL="${CONFIG[DOCKER_COMPOSE_FILE_URL]}"
 
+# Setup Cleanup Trap
+cleanup() {
+    echo "Running Cleanup..."
+    # Beispiel: Löschen des temporären Verzeichnisses
+    [[ -d "${TEMP_DIR}" ]] && rm -rf "${TEMP_DIR}"
+    echo "Cleanup completed."
+}
+trap cleanup EXIT
+
 log_message() {
     local message="$1"
     echo -e "[$(date +'%Y-%m-%d %H:%M:%S')] $message" | tee -a "$LOG_FILE"
