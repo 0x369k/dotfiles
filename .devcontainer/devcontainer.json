@@ -7,7 +7,7 @@
     "customizations": {
         "vscode": {
             "settings": {
-                "terminal.integrated.defaultProfile.linux": "zsh"
+                "terminal.integrated.defaultProfile.linux": "bash"
             },
             "extensions": [
                 "ms-vscode.cpptools",
@@ -23,5 +23,4 @@
         "source=${localWorkspaceFolder},target=/home/developer,type=bind,consistency=cached",
         "source=${localEnv:HOME}${localEnv:USERPROFILE}/.ssh,target=/home/developer/.ssh,type=bind,consistency=cached"
     ]
-    
 }

@@ -17,18 +17,17 @@ ENV LANG de_DE.UTF-8
 ENV LANGUAGE de_DE:en
 ENV LC_ALL de_DE.UTF-8
 ENV TERM xterm-256color
-ENV SHELL=/bin/zsh
+ENV SHELL=/bin/bash
 # Benutzer hinzufügen und zum sudoers ohne Passwortabfrage hinzufügen
 RUN useradd -m $USERNAME && \
     adduser $USERNAME sudo && \
     echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers && \
-    usermod --shell /bin/zsh $USERNAME
+    usermod --shell /bin/bash $USERNAME
 # Als der erstellte Benutzer arbeiten und ins Home-Verzeichnis wechseln
 USER $USERNAME
 WORKDIR /home/$USERNAME
 # Hinzufügen des deploy.sh Skripts zum Image
 COPY deploy.sh /deploy.sh
 RUN chmod +x /deploy.sh
-
 # Definieren des deploy.sh Skripts als Einstiegspunkt
-ENTRYPOINT ["zsh", "-c", "curl -Lks https://raw.githubusercontent.com/0x369k/dotfiles/main/.zsh/deploy.sh | bash -s -- --docker"]
+ENTRYPOINT ["bash", "-c", "curl -Lks https://raw.githubusercontent.com/0x369k/dotfiles/main/.bash/deploy.sh | bash -s -- --docker"]
