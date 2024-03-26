@@ -94,7 +94,7 @@ download_file() {
 
 download_deploy_script() {
     local deploy_script_url="https://raw.githubusercontent.com/0x369k/dotfiles/main/.zsh/deploy.sh"
-    local deploy_script_path="/tmp/deploy.sh"
+    local deploy_script_path="/tmp/"
     download_file "$deploy_script_url" "$deploy_script_path" "Downloading deploy.sh script..."
     chmod +x "$deploy_script_path"
     echo "$deploy_script_path"
@@ -164,22 +164,6 @@ create_docker_container() {
     execute_command "docker cp ${LOG_DIR} dotfiles-container:/home/${USERNAME:-developer}/" "Copying log directory to container..."
 }
 
-display_ascii_art() {
-    echo -e "
-\033[38;5;33m ____ __ ______ __
- / __ \\____ / /_/ ____// /__ _____
- / / / / __ \\/ __/ /_ / / _ \\/ ___/
- / /_/ / /_/ / /_/ __/ / / __(__ )
-/_____/\\____/\\__/_/ /_/\\___/____/
-\033[38;5;39m ___ __
- / \\___ ____ / /___ __ __
- / /\\ / _ \\/ __ \\/ / __ \\/ / / /
- / /_// (_) / /_/ / / /_/ / /_/ /
-/___,' \\___/ .___/_/\\____/\\__, /
- /_/ /____/
-\033[0m
-"
-}
 
 # Herunterladen des deploy.sh-Skripts
 download_deploy_script() {
@@ -189,7 +173,6 @@ download_deploy_script() {
     chmod +x "$deploy_script_path"
     echo "$deploy_script_path"
 }
-
 
 display_success_message() {
     echo -e "
