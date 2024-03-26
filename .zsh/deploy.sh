@@ -34,11 +34,12 @@ LOG_FILE="${LOG_DIR}/deploy_$(date +%Y-%m-%d_%H-%M-%S).log"
 DOCKERFILE_URL="${CONFIG[DOCKERFILE_URL]}"
 DOCKER_COMPOSE_FILE_URL="${CONFIG[DOCKER_COMPOSE_FILE_URL]}"
 
-# Setup Cleanup Trap
 cleanup() {
     echo "Running Cleanup..."
     # Beispiel: Löschen des temporären Verzeichnisses
     [[ -d "${TEMP_DIR}" ]] && rm -rf "${TEMP_DIR}"
+    # Löschen des heruntergeladenen deploy.sh-Skripts
+    [[ -f "/tmp/deploy.sh" ]] && rm -f "/tmp/deploy.sh"
     echo "Cleanup completed."
 }
 trap cleanup EXIT
@@ -137,6 +138,7 @@ main() {
         # Logic for local mode
         ;;
     "--docker")
+        local workdir="${4:-${HOME}/docker_workbench}"
         create_docker_container "$workdir"
         ;;
     "--restore")
@@ -147,8 +149,6 @@ main() {
         ;;
     esac
 }
-
-main "$@"
 
 # Herunterladen des deploy.sh-Skripts, wenn es nicht lokal vorhanden ist
 if [ "$0" = "bash" ] || [ "$0" = "/bin/bash" ]; then
