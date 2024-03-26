@@ -150,10 +150,4 @@ main() {
     esac
 }
 
-# Herunterladen des deploy.sh-Skripts, wenn es nicht lokal vorhanden ist
-if [ "$0" = "bash" ] || [ "$0" = "/bin/bash" ]; then
-deploy_script_path=$(download_deploy_script)
-exec "$deploy_script_path" "$@"
-else
 main "$@"
-fi
