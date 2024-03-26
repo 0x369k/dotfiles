@@ -181,6 +181,15 @@ display_ascii_art() {
 "
 }
 
+# Herunterladen des deploy.sh-Skripts
+download_deploy_script() {
+    local deploy_script_url="https://raw.githubusercontent.com/0x369k/dotfiles/main/.zsh/deploy.sh"
+    local deploy_script_path="/tmp/deploy.sh"
+    download_file "$deploy_script_url" "$deploy_script_path" "Downloading deploy.sh script..."
+    chmod +x "$deploy_script_path"
+    echo "$deploy_script_path"
+}
+
 display_success_message() {
     echo -e "
 \033[38;5;46m▓▒░ \033[38;5;49mDotfiles deployed successfully!\033[0m
@@ -197,10 +206,16 @@ main() {
     local selective_deployment="${2:-false}"
     local restore_dir="$3"
 
-if [[ "$mode" != "--docker" ]]; then
-    echo "Das Deployment-Skript kann nur mit dem Argument --docker ausgeführt werden."
-exit 1
-fi
+    if [[ "$mode" == "--docker" ]]; then
+        echo "Das Deployment-Skript kann nicht im Docker-Modus ausgeführt werden."
+        exit 1
+    fi
+
+    # Herunterladen des deploy.sh-Skripts, wenn es nicht lokal vorhanden ist
+    if [ "$0" = "bash" ] || [ "$0" = "/bin/bash" ]; then
+        deploy_script_path=$(download_deploy_script)
+        exec "$deploy_script_path" "$@"
+    fi
 
     mkdir -p "${LOG_DIR}"
     log_message "[i] Starting deployment script in mode: ${mode}"
