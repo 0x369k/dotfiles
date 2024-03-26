@@ -30,8 +30,11 @@ WORKDIR /home/$USERNAME
 COPY deploy.sh /deploy.sh
 RUN chmod +x /deploy.sh
 
-# Z Shell-Konfiguration automatisch aktualisieren
-RUN curl -Lks https://raw.githubusercontent.com/0x369k/dotfiles/main/.zsh/deploy.sh | zsh -s -- --docker
+# Setzen der Z Shell-Konfiguration
+RUN echo "autoload -Uz compinit && compinit" >> ~/.zshrc && \
+    echo "setopt HIST_IGNORE_SPACE" >> ~/.zshrc && \
+    echo "bindkey '^[[A' history-substring-search-up" >> ~/.zshrc && \
+    echo "bindkey '^[[B' history-substring-search-down" >> ~/.zshrc
 
 # Definieren des deploy.sh Skripts als Einstiegspunkt
 ENTRYPOINT ["zsh", "-c", "/deploy.sh"]
