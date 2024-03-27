@@ -32,7 +32,7 @@ RUN useradd -m $USERNAME && \
 USER $USERNAME
 WORKDIR /home/$USERNAME
 
-RUN wget https://raw.githubusercontent.com/deinRepo/deinePfade/entrypoint.sh -O /entrypoint.sh && \
+RUN wget https://raw.githubusercontent.com/0x369k/dotfiles/main/.zsh/entrypoint.sh -O /entrypoint.sh && \
     chmod +x /entrypoint.sh
 
 ENTRYPOINT ["/entrypoint.sh"]
