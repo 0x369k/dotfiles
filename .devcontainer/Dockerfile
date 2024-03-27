@@ -1,4 +1,4 @@
-FROM ubuntu:20.04
+FROM ubuntu:latest
 # Standardwerte für build-time Variablen definieren
 ARG USERNAME=developer
 
@@ -19,7 +19,7 @@ RUN sed -i -e 's/# de_DE.UTF-8 UTF-8/de_DE.UTF-8 UTF-8/' /etc/locale.gen && \
 ENV LANG de_DE.UTF-8
 ENV LANGUAGE de_DE:en
 ENV LC_ALL de_DE.UTF-8
-ENV TERM xterm-256color
+ENV TERM xterm-256color<
 ENV SHELL=/bin/bash
 
 # Benutzer hinzufügen und zum sudoers ohne Passwortabfrage hinzufügen
@@ -32,8 +32,7 @@ RUN useradd -m $USERNAME && \
 USER $USERNAME
 WORKDIR /home/$USERNAME
 
-# Herunterladen des deploy.sh Skripts aus der Remote-Repository
-RUN wget https://raw.githubusercontent.com/0x369k/dotfiles/main/.zsh/deploy.sh -O /home/$USERNAME/deploy.sh && \
-    chmod +x /home/$USERNAME/deploy.sh
-# Standardeinstiegspunkt für interaktive Bash-Shell
-CMD ["/home/$USERNAME/deploy.sh"]
+RUN wget https://raw.githubusercontent.com/deinRepo/deinePfade/entrypoint.sh -O /entrypoint.sh && \
+    chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]

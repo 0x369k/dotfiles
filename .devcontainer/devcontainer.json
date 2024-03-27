@@ -1,26 +1,18 @@
-{
-    "name": "Dev Container",
-    "build": {
-        "context": ".",
-        "dockerfile": "Dockerfile"
-    },
-    "customizations": {
-        "vscode": {
-            "settings": {
-                "terminal.integrated.defaultProfile.linux": "bash"
-            },
-            "extensions": [
-                "ms-vscode.cpptools",
-                "ms-python.python",
-                "golang.go",
-                "eamodio.gitlens"
-            ]
-        }
-    },
-    "remoteUser": "developer",
-    "workspaceFolder": "/home/developer",
-    "mounts": [
-        "source=${localWorkspaceFolder},target=/home/developer,type=bind,consistency=cached",
-        "source=${localEnv:HOME}${localEnv:USERPROFILE}/.ssh,target=/home/developer/.ssh,type=bind,consistency=cached"
-    ]
-}
+version: '3.9'
+services:
+  dev-environment:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        USERNAME: ${USERNAME:-developer}
+    image: "${IMAGE_NAME:-my-dev-image}"
+    container_name: "${CONTAINER_NAME:-my-dev-container}"
+    volumes:
+      - ${PWD}:/home/${USERNAME:-developer}/workspace:cached
+      - ~/.ssh:/home/${USERNAME:-developer}/.ssh:cached
+    environment:
+      - USER=${USERNAME:-developer}
+    working_dir: /home/${USERNAME:-developer}/workspace
+    stdin_open: true
+    tty: true
