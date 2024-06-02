@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Define colors and symbols for output
+# Farben und Symbole definieren
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
@@ -11,180 +11,151 @@ WARN="${YELLOW}⚠${NC}"
 ERROR="${RED}✖${NC}"
 INFO="${BLUE}ℹ${NC}"
 
-# Define directories and variables
+# Verzeichnisse und Variablen definieren
 DOTFILES_DIR="$HOME/.dotfiles"
 GIT_DIR="$DOTFILES_DIR"
-REPO_URL="https://github.com/0x369k/dotfiles.git"
 TIMESTAMP=$(date +%Y%m%d%H%M%S)
 BACKUP_DIR="$HOME/.dotfiles_backup_$TIMESTAMP"
+LOG_FILE="$HOME/deploy_dotfiles.log"
 
-# Log and error functions
+# Sprachunterstützung
+LANGUAGE="de"
+set_language() {
+    case $LANGUAGE in
+        "de")
+            INFO="ℹ"
+            WARN="⚠"
+            CHECK="✔"
+            ERROR="✖"
+            ;;
+        "en")
+            INFO="INFO:"
+            WARN="WARNING:"
+            CHECK="SUCCESS:"
+            ERROR="ERROR:"
+            ;;
+        *)
+            ;;
+    esac
+}
+set_language
+
+# Log- und Fehlerfunktionen
+log_info() {
+    echo -e "${INFO} $1"
+    echo "$(date +"%Y-%m-%d %H:%M:%S") INFO: $1" >> "$LOG_FILE"
+}
+
+log_warn() {
+    echo -e "${WARN} $1"
+    echo "$(date +"%Y-%m-%d %H:%M:%S") WARN: $1" >> "$LOG_FILE"
+}
+
+log_success() {
+    echo -e "${CHECK} $1"
+    echo "$(date +"%Y-%m-%d %H:%M:%S") SUCCESS: $1" >> "$LOG_FILE"
+}
+
 log_error() {
     echo -e "${ERROR} $1" >&2
+    echo "$(date +"%Y-%m-%d %H:%M:%S") ERROR: $1" >> "$LOG_FILE"
     exit 1
 }
 
-info() {
-    echo -e "${INFO} $1"
-}
-
-warn() {
-    echo -e "${WARN} $1"
-}
-
-success() {
-    echo -e "${CHECK} $1"
-}
-
-# Check for necessary dependencies
+# Abhängigkeiten überprüfen
 check_dependencies() {
-    command -v git >/dev/null 2>&1 || log_error "Git is not installed. Please install Git and try again."
-    if [[ $1 == "--docker" ]]; then
-        command -v docker >/dev/null 2>&1 || log_error "Docker is not installed. Please install Docker and try again."
-        command -v docker-compose >/dev/null 2>&1 || log_error "Docker Compose is not installed. Please install Docker Compose and try again."
-    fi
+    command -v git >/dev/null 2>&1 || log_error "Git ist nicht installiert. Bitte installieren Sie Git und versuchen Sie es erneut."
 }
 
-# Backup existing dotfiles
+# Backup bestehender Dotfiles
 backup_dotfiles() {
     dotfiles=$(git --git-dir="$GIT_DIR" --work-tree="$HOME" ls-tree -r HEAD --name-only)
     backup_needed=false
 
     for file in $dotfiles; do
-        if [ -e "$HOME/$file" ]; then
-            warn "$file will be replaced and backed up to $BACKUP_DIR/$file"
+        if [ -f "$HOME/$file" ] || [ -d "$HOME/$file" ]; then
+            log_warn "$file wird ersetzt und nach $BACKUP_DIR/$file gesichert"
             backup_needed=true
         fi
     done
 
     if [ "$backup_needed" = true ]; then
-        read -p "Do you want to continue and back up these files? [y/N] " -n 1 -r
+        read -p "Möchten Sie fortfahren und diese Dateien sichern und ersetzen? [y/N] " -n 1 -r
         echo
         if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            log_error "Operation aborted"
+            log_error "Operation abgebrochen"
         fi
 
-        info "Backing up existing dotfiles to $BACKUP_DIR"
-        mkdir -p "$BACKUP_DIR" || log_error "Could not create backup directory"
-
-        for file in $dotfiles; do
-            if [ -e "$HOME/$file" ]; then
-                mkdir -p "$BACKUP_DIR/$(dirname "$file")"
-                mv "$HOME/$file" "$BACKUP_DIR/$file" || log_error "Could not back up $file"
-                success "$file backed up to $BACKUP_DIR/$file"
-            fi
-        done
+        log_info "Sichern bestehender Dotfiles nach $BACKUP_DIR"
+        rsync -a "$HOME/" "$BACKUP_DIR/" --files-from=<(echo "$dotfiles") || log_error "Konnte Backup nicht erstellen"
     else
-        info "No files to back up."
+        log_info "Keine Dateien zum Sichern gefunden."
     fi
 }
 
-# Initialize Git repository
+# Repository initialisieren
 initialize_repo() {
     if [ ! -d "$GIT_DIR/HEAD" ]; then
-        info "Initializing Git repository"
-        git --git-dir="$GIT_DIR" init --bare || log_error "Could not initialize Git repository"
+        log_info "Initialisiere Git-Repository"
+        git --git-dir="$GIT_DIR" init --bare || log_error "Konnte Git-Repository nicht initialisieren"
     else
-        info "Git repository already exists"
-        if [ "$FORCE_OVERWRITE" = true ]; then
-            info "Forcing overwrite of existing repository"
-        else
-            warn "Git repository already exists. Do you want to proceed and overwrite the existing configuration?"
-            read -p "Confirm with [y/N] " -n 1 -r
-            echo
-            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-                log_error "Operation aborted"
-            fi
+        log_info "Git-Repository existiert bereits"
+
+        # Sicherstellen, dass die bestehende Konfiguration nicht überschrieben wird
+        log_warn "Git-Repository existiert bereits. Möchten Sie fortfahren und bestehende Konfiguration überschreiben?"
+        read -p "Bestätigen Sie mit [y/N] " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            log_error "Operation abgebrochen"
         fi
     fi
 }
 
-# Setup Docker container
-setup_docker_container() {
-    shared_folder=$1
-    container_name=${2:-zsh_dev_container}
-
-    info "Setting shared folder to $shared_folder"
-    info "Setting container name to $container_name"
-
-    if SHARED_FOLDER="$shared_folder" docker-compose -f .devcontainer/docker-compose.yml up -d --build; then
-        success "Docker container successfully set up"
-    else
-        log_error "Could not set up Docker container"
-    fi
-
-    if docker exec -it "$container_name" /bin/zsh; then
-        success "Interactive shell in container $container_name started"
-    else
-        log_error "Could not enter Docker container"
-    fi
-}
-
-# Install dotfiles locally
-install_dotfiles_local() {
-    if [ -d "$DOTFILES_DIR" ]; then
-        info "Dotfiles directory already exists"
-    else
-        info "Creating dotfiles directory"
-        mkdir -p "$DOTFILES_DIR" || log_error "Could not create dotfiles directory"
-    fi
-
-    initialize_repo
-
-    info "Cloning remote repository from $REPO_URL"
-    if git --git-dir="$GIT_DIR" remote get-url origin &>/dev/null; then
-        warn "Remote repository 'origin' already exists. Updating remote URL."
-        git --git-dir="$GIT_DIR" remote set-url origin "$REPO_URL" || log_error "Could not update remote repository URL"
-    else
-        git --git-dir="$GIT_DIR" remote add origin "$REPO_URL" || log_error "Could not add remote repository"
-    fi
-
-    git --git-dir="$GIT_DIR" --work-tree="$HOME" fetch origin || log_error "Could not fetch dotfiles"
-
-    if ! git --git-dir="$GIT_DIR" --work-tree="$HOME" ls-remote --exit-code --heads origin main &>/dev/null; then
-        log_error "Branch 'origin/main' does not exist in the remote repository."
-    fi
-
-    git --git-dir="$GIT_DIR" --work-tree="$HOME" fetch --all
-
-    # Set pull strategy and perform pull
-    git --git-dir="$GIT_DIR" --work-tree="$HOME" config pull.rebase false
-    git --git-dir="$GIT_DIR" --work-tree="$HOME" pull origin main --allow-unrelated-histories || log_error "Could not clone dotfiles"
-
-    backup_dotfiles
-
-    git --git-dir="$GIT_DIR" --work-tree="$HOME" reset --hard origin/main || log_error "Could not check out dotfiles"
-    git --git-dir="$GIT_DIR" --work-tree="$HOME" checkout -f main || log_error "Could not check out dotfiles"
-
-    info "Adding .dotfiles to .gitignore"
-    echo ".dotfiles" >> "$HOME/.gitignore"
-
-    info "Dotfiles installation completed"
-}
-
-# Main logic
-main() {
-    check_dependencies $1
-
-    if [[ $1 == "--local" ]]; then
-        install_dotfiles_local
-    elif [[ $1 == "--docker" ]]; then
-        default_shared_folder="$HOME/docker_shared"
-        setup_docker_container "$default_shared_folder"
-    else
-        echo "Invalid option. Use --local or --docker."
-        exit 1
-    fi
-}
-
-# Setup exit trap to clean up script
+# Exit trap einrichten, um das Skript zu löschen
 cleanup() {
-    info "Removing the script"
+    log_info "Entferne das Skript"
     if [[ -f "$0" ]]; then
         rm -- "$0"
     fi
 }
 trap cleanup EXIT
 
-# Start script
-main "$@"
+# Hauptlogik
+check_dependencies
+
+# Prüfen, ob das Repository-Verzeichnis existiert
+if [ -d "$DOTFILES_DIR" ]; then
+    log_info "Dotfiles-Verzeichnis existiert bereits"
+else
+    log_info "Erstelle Dotfiles-Verzeichnis"
+    mkdir -p "$DOTFILES_DIR" || log_error "Konnte Dotfiles-Verzeichnis nicht erstellen"
+fi
+
+# Repository initialisieren
+initialize_repo
+
+# Klonen des Remote-Repositorys, falls eine URL angegeben ist
+if [ "$1" ]; then
+    REPO_URL="$1"
+    log_info "Klonen des Remote-Repositorys von $REPO_URL"
+    if git --git-dir="$GIT_DIR" remote get-url origin &>/dev/null; then
+        log_warn "Remote-Repository 'origin' existiert bereits. Aktualisiere Remote-URL."
+        git --git-dir="$GIT_DIR" remote set-url origin "$REPO_URL" || log_error "Konnte Remote-Repository-URL nicht aktualisieren"
+    else
+        git --git-dir="$GIT_DIR" remote add origin "$REPO_URL" || log_error "Konnte Remote-Repository nicht hinzufügen"
+    fi
+    git --git-dir="$GIT_DIR" --work-tree="$HOME" fetch origin || log_error "Konnte Dotfiles nicht klonen"
+fi
+
+# Backup der bestehenden Dotfiles durchführen
+backup_dotfiles
+
+# Sicherstellen, dass alle Dotfiles korrekt aus dem Remote-Repository ausgecheckt werden
+git --git-dir="$GIT_DIR" --work-tree="$HOME" reset --hard origin/main || log_error "Konnte Dotfiles nicht auschecken"
+git --git-dir="$GIT_DIR" --work-tree="$HOME" checkout -f main || log_error "Konnte Dotfiles nicht auschecken"
+
+# Ignorieren des .dotfiles-Verzeichnisses im Home-Verzeichnis
+log_info "Füge .dotfiles zu .gitignore hinzu"
+echo ".dotfiles" >> "$HOME/.gitignore"
+
+log_info "Dotfiles-Installation abgeschlossen"
