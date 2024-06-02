@@ -221,4 +221,16 @@ trap cleanup EXIT
 
 # Hauptlogik
 check_dependencies
+
+# Argumente parsen
+while [[ "$#" -gt 0 ]]; do
+    case $1 in
+        --local) install_dotfiles_local; exit 0 ;;
+        --docker) shift; setup_docker_container "$1"; exit 0 ;;
+        *) echo "Unbekannte Option: $1"; exit 1 ;;
+    esac
+    shift
+done
+
+# Hauptmenü anzeigen, wenn keine Argumente übergeben wurden
 show_main_menu
