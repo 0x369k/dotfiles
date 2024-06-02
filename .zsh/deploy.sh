@@ -20,30 +20,26 @@ BACKUP_DIR="$HOME/.dotfiles_backup_$TIMESTAMP"
 # Log- und Fehlerfunktionen
 log_error() {
     echo -e "${ERROR} $1" >&2
-    logger -p user.err "$1"
     exit 1
 }
 
 info() {
     echo -e "${INFO} $1"
-    logger -p user.info "$1"
 }
 
 warn() {
     echo -e "${WARN} $1"
-    logger -p user.warn "$1"
 }
 
 success() {
     echo -e "${CHECK} $1"
-    logger -p user.info "$1"
 }
 
 # Abhängigkeiten überprüfen
 check_dependencies() {
     command -v git >/dev/null 2>&1 || log_error "Git ist nicht installiert. Bitte installieren Sie Git und versuchen Sie es erneut."
- #   command -v docker >/dev/null 2>&1 || log_error "Docker ist nicht installiert. Bitte installieren Sie Docker und versuchen Sie es erneut."
- #   command -v docker-compose >/dev/null 2>&1 || log_error "Docker Compose ist nicht installiert. Bitte installieren Sie Docker Compose und versuchen Sie es erneut."
+    command -v docker >/dev/null 2>&1 || log_error "Docker ist nicht installiert. Bitte installieren Sie Docker und versuchen Sie es erneut."
+    command -v docker-compose >/dev/null 2>&1 || log_error "Docker Compose ist nicht installiert. Bitte installieren Sie Docker Compose und versuchen Sie es erneut."
 }
 
 # Backup bestehender Dotfiles
