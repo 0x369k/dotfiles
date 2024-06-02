@@ -29,7 +29,6 @@ var/
 *.egg
 
 # PyInstaller
-# In der Regel sammelt PyInstaller alle benötigten Dateien in einem Ausgabeverzeichnis.
 dist/
 build/
 pyinstaller/
@@ -126,3 +125,11 @@ Thumbs.db
 **/.gnupg
 **/.ssh
 **/*.sock
+
+# Zusätzliche Ausschlüsse
+.zcompcache/
+.cache/
+.zsh_sessions/
+.zshrc.d/*.swp
+.zshrc.d/*.bak
+.zshrc.d/*.tmp

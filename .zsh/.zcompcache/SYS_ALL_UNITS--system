@@ -1,4 +1,0 @@
-_sys_all_units=( ${(Q)"${(z)$(<<\EO:_sys_all_units
-
-EO:_sys_all_units
-)}"} )
