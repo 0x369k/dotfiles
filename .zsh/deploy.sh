@@ -14,6 +14,7 @@ INFO="${BLUE}ℹ${NC}"
 # Verzeichnisse und Variablen definieren
 DOTFILES_DIR="$HOME/.dotfiles"
 GIT_DIR="$DOTFILES_DIR"
+REPO_URL="https://github.com/0x369k/dotfiles.git"
 TIMESTAMP=$(date +%Y%m%d%H%M%S)
 BACKUP_DIR="$HOME/.dotfiles_backup_$TIMESTAMP"
 
@@ -39,7 +40,7 @@ success() {
 check_dependencies() {
     command -v git >/dev/null 2>&1 || log_error "Git ist nicht installiert. Bitte installieren Sie Git und versuchen Sie es erneut."
 #    command -v docker >/dev/null 2>&1 || log_error "Docker ist nicht installiert. Bitte installieren Sie Docker und versuchen Sie es erneut."
-#    command -v docker-compose >/dev/null 2>&1 || log_error "Docker Compose ist nicht installiert. Bitte installieren Sie Docker Compose und versuchen Sie es erneut."
+ #   command -v docker-compose >/dev/null 2>&1 || log_error "Docker Compose ist nicht installiert. Bitte installieren Sie Docker Compose und versuchen Sie es erneut."
 }
 
 # Backup bestehender Dotfiles
@@ -130,24 +131,28 @@ install_dotfiles_local() {
     # Repository initialisieren
     initialize_repo
 
-    # Klonen des Remote-Repositorys, falls eine URL angegeben ist
-    if [ "$1" ]; then
-        REPO_URL="$1"
-        info "Klonen des Remote-Repositorys von $REPO_URL"
-        if git --git-dir="$GIT_DIR" remote get-url origin &>/dev/null; then
-            warn "Remote-Repository 'origin' existiert bereits. Aktualisiere Remote-URL."
-            git --git-dir="$GIT_DIR" remote set-url origin "$REPO_URL" || log_error "Konnte Remote-Repository-URL nicht aktualisieren"
-        else
-            git --git-dir="$GIT_DIR" remote add origin "$REPO_URL" || log_error "Konnte Remote-Repository nicht hinzufügen"
-        fi
-        git --git-dir="$GIT_DIR" --work-tree="$HOME" fetch origin || log_error "Konnte Dotfiles nicht klonen"
-
-        # Branch 'main' auschecken
-        git --git-dir="$GIT_DIR" --work-tree="$HOME" checkout main || log_error "Konnte Dotfiles nicht auschecken"
-
-        # Mit 'origin/main' mergen
-        git --git-dir="$GIT_DIR" --work-tree="$HOME" pull origin main || log_error "Konnte Dotfiles nicht mergen"
+    # Klonen des Remote-Repositorys
+    info "Klonen des Remote-Repositorys von $REPO_URL"
+    if git --git-dir="$GIT_DIR" remote get-url origin &>/dev/null; then
+        warn "Remote-Repository 'origin' existiert bereits. Aktualisiere Remote-URL."
+        git --git-dir="$GIT_DIR" remote set-url origin "$REPO_URL" || log_error "Konnte Remote-Repository-URL nicht aktualisieren"
+    else
+        git --git-dir="$GIT_DIR" remote add origin "$REPO_URL" || log_error "Konnte Remote-Repository nicht hinzufügen"
     fi
+
+    # Fetch und überprüfen, ob der Branch existiert
+    git --git-dir="$GIT_DIR" --work-tree="$HOME" fetch origin || log_error "Konnte Dotfiles nicht klonen"
+
+    # Sicherstellen, dass der Branch existiert
+    if ! git --git-dir="$GIT_DIR" --work-tree="$HOME" ls-remote --exit-code --heads origin main &>/dev/null; then
+        log_error "Branch 'origin/main' existiert nicht im Remote-Repository."
+    fi
+
+    git --git-dir="$GIT_DIR" --work-tree="$HOME" fetch --all
+
+    # Setzen der Pull-Strategie und Pull ausführen
+    git --git-dir="$GIT_DIR" --work-tree="$HOME" config pull.rebase false
+    git --git-dir="$GIT_DIR" --work-tree="$HOME" pull origin main || log_error "Konnte Dotfiles nicht klonen"
 
     # Backup der bestehenden Dotfiles durchführen
     backup_dotfiles
@@ -168,7 +173,7 @@ main() {
     check_dependencies
 
     if [[ $1 == "--local" ]]; then
-        install_dotfiles_local "$2"
+        install_dotfiles_local
     elif [[ $1 == "--docker" ]]; then
         default_shared_folder="$HOME/docker_shared"
         setup_docker_container "$default_shared_folder"
