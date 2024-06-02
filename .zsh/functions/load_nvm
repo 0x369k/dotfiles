@@ -1,0 +1,32 @@
+# Lazy load nvm
+load_nvm() {
+    unset -f nvm node npm npx yarn # Remove the stub functions
+    export NVM_DIR="$HOME/.nvm"
+    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+    [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+}
+
+nvm() {
+    load_nvm
+    nvm "$@"
+}
+
+node() {
+    load_nvm
+    node "$@"
+}
+
+npm() {
+    load_nvm
+    npm "$@"
+}
+
+npx() {
+    load_nvm
+    npx "$@"
+}
+
+yarn() {
+    load_nvm
+    yarn "$@"
+}

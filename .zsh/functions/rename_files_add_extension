@@ -1,0 +1,37 @@
+rename_files_add_extension() {
+    local dir="${1:-.}" # Verwendet das aktuelle Verzeichnis als Standard
+    local extension="${2}"
+
+    # Überprüfen, ob die Dateiendung angegeben wurde
+    if [[ -z "$extension" ]]; then
+        echo "Benutzung: rename_files_add_extension [VERZEICHNIS] ENDUNG"
+        return 1
+    fi
+
+    # Sicherstellen, dass die Endung mit einem Punkt beginnt
+    [[ "$extension" == .* ]] || extension=".$extension"
+
+    # Überprüfen, ob das angegebene Verzeichnis existiert
+    if [[ ! -d "$dir" ]]; then
+        echo "Verzeichnis '$dir' existiert nicht."
+        return 1
+    fi
+
+    # Durchlaufen aller Dateien im Verzeichnis
+    for file in "$dir"/*; do
+        if [[ -f "$file" && "${file##*.}" != "${extension#.}" ]]; then
+            local newfile="${file}${extension}"
+            if [[ ! -e "$newfile" ]]; then
+                mv "$file" "$newfile"
+                echo "Umbenannt: $file -> $newfile"
+            else
+                echo "Ziel existiert bereits: $newfile"
+            fi
+        fi
+    done
+}
+
+# Beispielaufruf der Funktion mit dynamischer Endung und optionalem Verzeichnis
+# rename_files_add_extension "/pfad/zum/verzeichnis" "txt"
+# oder einfach
+# rename_files_add_extension "" "txt" für das aktuelle Verzeichnis

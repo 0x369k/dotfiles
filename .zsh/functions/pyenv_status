@@ -1,0 +1,59 @@
+# Pfad zur Konfigurationsdatei
+PYENV_STATUS_FILE="$HOME/.pyenv_status"
+
+# Funktion zum Setzen des pyenv Status
+set_pyenv_status() {
+  if [[ $1 == "on" || $1 == "off" ]]; then
+    echo $1 > "$PYENV_STATUS_FILE"
+    apply_pyenv_status_on_startup
+    if [[ $1 == "on" ]]; then
+      print -P "%F{226}▓▒░ %F{33}PYENV Status gesetzt auf: %F{46}aktiviert%f%b"
+    else
+      print -P "%F{226}▓▒░ %F{33}PYENV Status gesetzt auf: %F{160}deaktiviert%f%b"
+    fi
+  else
+    print -P "%F{226}▓▒░ %F{33}Ungültiger Status. Verwende 'on' oder 'off'.%f%b"
+  fi
+}
+
+# Funktion zum Anzeigen des aktuellen pyenv Status^
+pyenv_status() {
+  if ! command -v pyenv &> /dev/null; then
+    print -P "%F{226}▓▒░ %F{33}pyenv ist %F{160}nicht vorhanden%f%b"
+    return 1
+  fi
+
+  if [[ -f "$PYENV_STATUS_FILE" ]]; then
+    local current_status=$(cat "$PYENV_STATUS_FILE")
+    if [[ $current_status == "on" ]]; then
+      print -P "%F{226}▓▒░ %F{33}PYENV ist %F{46}aktiviert%f%b"
+    else
+      print -P "%F{226}▓▒░ %F{33}PYENV ist %F{160}deaktiviert%f%b"
+    fi
+  else
+    print -P "%F{226}▓▒░ %F{33}PYENV Statusdatei nicht gefunden. Standardmäßig wird 'on' angenommen.%f%b"
+    echo "on" > "$PYENV_STATUS_FILE"
+    pyenv_status
+  fi
+}
+
+# Beim Start der Shell den pyenv Status prüfen und anwenden
+apply_pyenv_status_on_startup() {
+  if [[ -f "$PYENV_STATUS_FILE" ]]; then
+    local startup_status=$(cat "$PYENV_STATUS_FILE")
+    if [[ $startup_status == "off" ]]; then
+      # Deaktivieren von pyenv, indem PATH bereinigt wird
+      export PATH=$(echo $PATH | tr ':' '\n' | grep -v '.pyenv' | tr '\n' ':')
+    else
+      # Reaktivieren von pyenv (wenn nicht bereits geschehen)
+      export PATH="$HOME/.pyenv/bin:$PATH"
+      eval "$(pyenv init -)"
+      eval "$(pyenv virtualenv-init -)"
+    fi
+  fi
+}
+
+if command -v pyenv &> /dev/null
+  then
+apply_pyenv_status_on_startup
+fi

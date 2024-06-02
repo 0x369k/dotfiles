@@ -1,0 +1,44 @@
+add_folder_to_md() {
+  local search_pattern=$1
+  local ignore_file=$2
+
+  local output_filename
+  output_filename="$(date '+%Y-%m-%d_%H-%M-%S').md"
+  echo "# Zusammengeführte Dateien vom $(date '+%Y-%m-%d %H:%M:%S')" > "$output_filename"
+
+  while IFS= read -r -d $'\0' file; do
+    if [[ "$file" == "$ignore_file" ]]; then
+      continue
+    fi
+    echo -e "\n## $file\n" >> "$output_filename"
+    cat "$file" >> "$output_filename"
+    echo -e "\n" >> "$output_filename"
+  done < <(find . -type f -name "$search_pattern" -print0)
+
+  echo "Dateien wurden erfolgreich in '$output_filename' zusammengeführt basierend auf dem Suchmuster '$search_pattern'."
+}
+
+merge_files_to_md() {
+  echo "Benutze TAB zum Auswählen mehrerer Dateien, ENTER zum Bestätigen, ESC zum Abbrechen."
+  local search_dir="${1:-.}"
+
+  local files
+  IFS=$'\n' files=($(find "$search_dir" -type f -print0 | fzf --multi --preview 'cat {}' --preview-window=down:3:wrap --bind='?:toggle-preview' --header 'Wähle Dateien zum Zusammenführen (TAB für Mehrfachauswahl)' --read0 | xargs -0 -n1 echo))
+
+  if [[ ${#files[@]} -eq 0 ]]; then
+    echo "Keine Dateien ausgewählt. Vorgang abgebrochen."
+    return
+  fi
+
+  local output_filename
+  output_filename="$(date '+%Y-%m-%d_%H-%M-%S').md"
+  echo "# Zusammengeführte Dateien vom $(date '+%Y-%m-%d %H:%M:%S')" > "$output_filename"
+
+  for file in "${files[@]}"; do
+    echo -e "\n## $file\n" >> "$output_filename"
+    cat "$file" >> "$output_filename"
+    echo -e "\n" >> "$output_filename"
+  done
+
+  echo "Dateien wurden erfolgreich in '$output_filename' zusammengeführt."
+}

@@ -1,0 +1,13 @@
+debug_cmd() {
+    local start_time=$(date +%s)
+    PS4='+$(date "+%Y-%m-%d %H:%M:%S") $LINENO: '
+    echo "Ausführung von: $@"
+    set -x
+    eval "$@"
+    set +x
+    local cmd_status=$?
+    local end_time=$(date +%s)
+    echo "Kommando ausgeführt in $((end_time - start_time)) Sekunden mit Exit-Status $cmd_status"
+}
+
+compdef debug_cmd debug_cmd

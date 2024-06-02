@@ -1,0 +1,10 @@
+open_with_app() {
+    local ext="${1##*.}"
+    case "$ext" in
+        html|htm) $BROWSER "$1" ;;
+        txt|md) $EDITOR "$1" ;;
+        gif|jpeg|jpg|png) $IMAGEVIEWER "$1" ;;
+        *) echo "No default application configured for .$ext files" ;;
+    esac
+}
+# Usage: open_with_app filename

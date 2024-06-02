@@ -1,0 +1,3 @@
+
+# run zsh functions loaded as user as sudo
+# usage: zsudo function

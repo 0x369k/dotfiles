@@ -1,0 +1,26 @@
+function check_command() {
+    if ! command -v $1 &> /dev/null; then
+        return 1
+    fi
+}
+# Verwendung:
+# check_command BEFEHL
+
+function check_command_and_subcommand() {
+    # Überprüfen Sie, ob der Hauptbefehl existiert
+    if ! command -v $1 &> /dev/null; then
+        echo "Befehl $1 existiert nicht."
+        return 1 n                    c 
+    fi
+
+    # Überprüfen Sie, ob der Unterbefehl existiert
+    if ! $1 help | grep -q $2; then
+        echo "Unterbefehl $2 für $1 existiert nicht."
+        return 1
+    fi
+
+    echo "Sowohl der Befehl $1 als auch der Unterbefehl $2 existieren."
+}
+
+# Verwendung:
+# check_command_and_subcommand BEFEHL UNTERBEFEHL

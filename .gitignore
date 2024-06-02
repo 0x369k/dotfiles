@@ -1,0 +1,128 @@
+# Kompilierte Quelldateien
+*.com
+*.class
+*.dll
+*.exe
+*.o
+*.so
+
+# Paket-Verzeichnisse
+.cache/dconf/
+node_modules/
+jspm_packages/
+
+# Distribution / Verpackung
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# PyInstaller
+# In der Regel sammelt PyInstaller alle benötigten Dateien in einem Ausgabeverzeichnis.
+dist/
+build/
+pyinstaller/
+
+# Installer-Logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit-Test / Abdeckung
+.coverage
+.tox/
+.nox/
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Jupyter-Notebooks
+.ipynb_checkpoints
+
+# Umgebung
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Spyder-Projektdateien
+.spyderproject
+.spyproject
+
+# Rope-Projektdateien
+.ropeproject
+
+# mkdocs Dokumentation
+/site
+
+# mypy
+.mypy_cache/
+
+# Temporäre Dateien
+*.swp
+*.bak
+*.tmp
+*.temp
+
+# IDE-spezifisch
+.idea/
+.vscode/
+*.sublime-workspace
+*.sublime-project
+
+# Betriebssystem-spezifisch
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Zsh-spezifisch
+*.zwc
+
+# Zsh kompilierte Skripte
+*.zwc
+
+# Zi-Verzeichnisse und -Dateien
+.zi/
+.zcompdump*
+.zsh_sessions/
+.zi_plugins/
+
+# Lokale History-Dateien
+.zhistory
+.zsh_history
+
+# Lokale Cache-Dateien
+.zcache/
+
+# Eigene Skripte oder Konfigurationen, die sensitiv sein könnten
+/custom_zsh/
+/secrets.zsh
+
+# Temporäre Dateien, die von Zsh oder Skripten erstellt werden könnten
+*.swap
+*.tmp
+*.bak
+
+.ssh/
+
+**/.gnupg
+**/.ssh
+**/*.sock
