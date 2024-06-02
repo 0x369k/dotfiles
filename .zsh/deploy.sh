@@ -42,8 +42,8 @@ success() {
 # Abhängigkeiten überprüfen
 check_dependencies() {
     command -v git >/dev/null 2>&1 || log_error "Git ist nicht installiert. Bitte installieren Sie Git und versuchen Sie es erneut."
-#    command -v docker >/dev/null 2>&1 || log_error "Docker ist nicht installiert. Bitte installieren Sie Docker und versuchen Sie es erneut."
-#    command -v docker-compose >/dev/null 2>&1 || log_error "Docker Compose ist nicht installiert. Bitte installieren Sie Docker Compose und versuchen Sie es erneut."
+    command -v docker >/dev/null 2>&1 || log_error "Docker ist nicht installiert. Bitte installieren Sie Docker und versuchen Sie es erneut."
+    command -v docker-compose >/dev/null 2>&1 || log_error "Docker Compose ist nicht installiert. Bitte installieren Sie Docker Compose und versuchen Sie es erneut."
 }
 
 # Backup bestehender Dotfiles
@@ -52,7 +52,7 @@ backup_dotfiles() {
     backup_needed=false
 
     for file in $dotfiles; do
-        if [ -f "$HOME/$file" ] || [ -d "$HOME/$file" ]; then
+        if [ -e "$HOME/$file" ]; then
             warn "$file wird ersetzt und nach $BACKUP_DIR/$file gesichert"
             backup_needed=true
         fi
@@ -69,7 +69,7 @@ backup_dotfiles() {
         mkdir -p "$BACKUP_DIR" || log_error "Konnte Backup-Verzeichnis nicht erstellen"
 
         for file in $dotfiles; do
-            if [ -f "$HOME/$file" ] || [ -d "$HOME/$file" ]; then
+            if [ -e "$HOME/$file" ]; then
                 mkdir -p "$BACKUP_DIR/$(dirname "$file")"
                 mv "$HOME/$file" "$BACKUP_DIR/$file" || log_error "Konnte $file nicht sichern"
                 success "$file gesichert nach $BACKUP_DIR/$file"
@@ -87,11 +87,15 @@ initialize_repo() {
         git --git-dir="$GIT_DIR" init --bare || log_error "Konnte Git-Repository nicht initialisieren"
     else
         info "Git-Repository existiert bereits"
-        warn "Git-Repository existiert bereits. Möchten Sie fortfahren und bestehende Konfiguration überschreiben?"
-        read -p "Bestätigen Sie mit [y/N] " -n 1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            log_error "Operation abgebrochen"
+        if [ "$FORCE_OVERWRITE" = true ]; then
+            info "Erzwinge Überschreibung des bestehenden Repositorys"
+        else
+            warn "Git-Repository existiert bereits. Möchten Sie fortfahren und bestehende Konfiguration überschreiben?"
+            read -p "Bestätigen Sie mit [y/N] " -n 1 -r
+            echo
+            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                log_error "Operation abgebrochen"
+            fi
         fi
     fi
 }
@@ -99,58 +103,22 @@ initialize_repo() {
 # Docker-Container einrichten
 setup_docker_container() {
     shared_folder=$1
+    container_name=${2:-zsh_dev_container}
+
     info "Shared Folder wird auf $shared_folder gesetzt"
-    SHARED_FOLDER="$shared_folder" docker-compose -f .devcontainer/docker-compose.yml up -d --build
-    docker exec -it zsh_dev_container /bin/zsh
-}
+    info "Container-Name wird auf $container_name gesetzt"
 
-# Hauptmenü
-show_main_menu() {
-    PS3="Bitte wählen Sie eine Option: "
-    options=("Dotfiles lokal installieren" "Dotfiles in Docker-Container installieren" "Beenden")
-    select opt in "${options[@]}"
-    do
-        case $opt in
-            "Dotfiles lokal installieren")
-                install_dotfiles_local
-                ;;
-            "Dotfiles in Docker-Container installieren")
-                show_docker_menu
-                ;;
-            "Beenden")
-                break
-                ;;
-            *) echo "Ungültige Option $REPLY";;
-        esac
-    done
-}
+    if SHARED_FOLDER="$shared_folder" docker-compose -f .devcontainer/docker-compose.yml up -d --build; then
+        success "Docker-Container wurde erfolgreich eingerichtet"
+    else
+        log_error "Konnte Docker-Container nicht einrichten"
+    fi
 
-# Docker-Menü
-show_docker_menu() {
-    PS3="Bitte wählen Sie einen shared Ordner: "
-    default_location="$HOME/docker_shared"
-    current_location=$(pwd)
-    options=("Default Location ($default_location)" "Aktueller Pfad ($current_location)" "Eigenen Ordner wählen" "Zurück")
-    select opt in "${options[@]}"
-    do
-        case $opt in
-            "Default Location ($default_location)")
-                shared_folder="$default_location"
-                ;;
-            "Aktueller Pfad ($current_location)")
-                shared_folder="$current_location"
-                ;;
-            "Eigenen Ordner wählen")
-                read -p "Bitte geben Sie den Pfad zum eigenen Ordner ein: " custom_folder
-                shared_folder="$custom_folder"
-                ;;
-            "Zurück")
-                show_main_menu
-                ;;
-            *) echo "Ungültige Option $REPLY";;
-        esac
-        [ -n "$shared_folder" ] && setup_docker_container "$shared_folder" && break
-    done
+    if docker exec -it "$container_name" /bin/zsh; then
+        success "Interaktive Shell im Container $container_name gestartet"
+    else
+        log_error "Konnte nicht in den Docker-Container wechseln"
+    fi
 }
 
 # Dotfiles lokal installieren
@@ -193,6 +161,21 @@ install_dotfiles_local() {
     info "Dotfiles-Installation abgeschlossen"
 }
 
+# Hauptlogik
+main() {
+    check_dependencies
+
+    if [[ $1 == "--local" ]]; then
+        install_dotfiles_local "$2"
+    elif [[ $1 == "--docker" ]]; then
+        default_shared_folder="$HOME/docker_shared"
+        setup_docker_container "$default_shared_folder"
+    else
+        echo "Ungültige Option. Verwenden Sie --local oder --docker."
+        exit 1
+    fi
+}
+
 # Exit trap einrichten, um das Skript zu löschen
 cleanup() {
     info "Entferne das Skript"
@@ -202,6 +185,5 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Hauptlogik
-check_dependencies
-show_main_menu
+# Skript starten
+main "$@"
