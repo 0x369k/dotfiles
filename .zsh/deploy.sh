@@ -1,161 +1,148 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# Farben und Symbole definieren
+# Color Codes
 GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
 RED='\033[0;31m'
+YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
 NC='\033[0m' # No Color
-CHECK="${GREEN}✔${NC}"
-WARN="${YELLOW}⚠${NC}"
-ERROR="${RED}✖${NC}"
-INFO="${BLUE}ℹ${NC}"
 
-# Verzeichnisse und Variablen definieren
-DOTFILES_DIR="$HOME/.dotfiles"
-GIT_DIR="$DOTFILES_DIR"
-TIMESTAMP=$(date +%Y%m%d%H%M%S)
-BACKUP_DIR="$HOME/.dotfiles_backup_$TIMESTAMP"
-LOG_FILE="$HOME/deploy_dotfiles.log"
+# Repositories and file URLs
+DOTFILES_REPO="https://github.com/0x369k/dotfiles.git"
+DOTDIR="${HOME}/.dotfiles"
+BACKUP_DIR="${HOME}/.dotfiles_backup/$(date +%Y-%m-%d_%H-%M-%S)"
+TEMP_DIR="/tmp/dotfiles_temp"
+LOG_FILE="/tmp/deploy.log"
 
-# Sprachunterstützung
-LANGUAGE="de"
-set_language() {
-    case $LANGUAGE in
-        "de")
-            INFO="ℹ"
-            WARN="⚠"
-            CHECK="✔"
-            ERROR="✖"
-            ;;
-        "en")
-            INFO="INFO:"
-            WARN="WARNING:"
-            CHECK="SUCCESS:"
-            ERROR="ERROR:"
-            ;;
-        *)
-            ;;
+# Load configuration if available
+CONFIG_FILE="${HOME}/.deploy_config"
+[ -f "$CONFIG_FILE" ] && source "$CONFIG_FILE"
+
+# Logging function for general messages
+log_message() {
+    local message="$1"
+    echo -e "[$(date +'%Y-%m-%d %H:%M:%S')] $message" | tee -a "$LOG_FILE"
+}
+
+# Enhanced safe_exit function with error logging
+safe_exit() {
+    local message="$1"
+    local code="${2:-1}" # Default exit status 1
+    echo -e "${RED}[✘] Error: ${message}${NC}" | tee -a "$LOG_FILE"
+    [ -d "${TEMP_DIR}" ] && rm -rf "${TEMP_DIR}"
+    exit "$code"
+}
+
+# Enhanced error handling
+execute_command() {
+    local command="$1"
+    local message="$2"
+    local ignore_error="${3:-false}"
+
+    echo -e "${BLUE}[i] $message${NC}"
+    log_message "$message"
+
+    if $ignore_error; then
+        eval "$command" 2>>"$LOG_FILE" || true
+    else
+        eval "$command" 2>>"$LOG_FILE" || safe_exit "Failed to execute: $command" 2
+    fi
+}
+
+# Function to check and install dependencies
+install_dependencies() {
+    log_message "[i] Checking for required dependencies..."
+    if ! command -v git &> /dev/null; then
+        log_message "[i] git is not installed. Installing git..."
+        if command -v apt-get &> /dev/null; then
+            sudo apt-get update && sudo apt-get install -y git
+        elif command -v yum &> /dev/null; then
+            sudo yum install -y git
+        elif command -v pacman &> /dev/null; then
+            sudo pacman -Sy git
+        else
+            safe_exit "Package manager not supported. Please install git manually."
+        fi
+    fi
+
+    if ! command -v curl &> /dev/null; then
+        log_message "[i] curl is not installed. Installing curl..."
+        if command -v apt-get &> /dev/null; then
+            sudo apt-get update && sudo apt-get install -y curl
+        elif command -v yum &> /dev/null; then
+            sudo yum install -y curl
+        elif command -v pacman &> /dev/null; then
+            sudo pacman -Sy curl
+        else
+            safe_exit "Package manager not supported. Please install curl manually."
+        fi
+    fi
+}
+
+# Function to backup files with progress indication
+backup_files() {
+    log_message "[i] Creating backup directory: ${BACKUP_DIR}"
+    mkdir -p "${BACKUP_DIR}" || safe_exit "Could not create backup directory"
+
+    log_message "[i] Cloning dotfiles repository..."
+    execute_command "git clone --depth=1 \"${DOTFILES_REPO}\" \"${TEMP_DIR}\"" "Cloning dotfiles repository..."
+
+    log_message "[i] Backing up existing files..."
+    while IFS= read -r -d '' file; do
+        relative_path="${file#"${TEMP_DIR}/"}"
+        target_dir="${BACKUP_DIR}/$(dirname "${relative_path}")"
+        mkdir -p "${target_dir}"
+        if [ -e "${HOME}/${relative_path}" ]; then
+            log_message "[i] Backing up: ${HOME}/${relative_path}"
+            mv "${HOME}/${relative_path}" "${target_dir}/" || safe_exit "Failed to backup ${relative_path}"
+        fi
+    done < <(find "${TEMP_DIR}" -type f -print0)
+
+    rm -rf "${TEMP_DIR}"
+}
+
+# Function to initialize and checkout dotfiles
+initialize_and_checkout_dotfiles() {
+    if [ -d "${DOTDIR}" ]; then
+        execute_command "mv \"${DOTDIR}\" \"${BACKUP_DIR}/\"" "Moving existing ${DOTDIR} to backup directory..."
+    fi
+    execute_command "git clone --bare \"${DOTFILES_REPO}\" \"${DOTDIR}\"" "Cloning bare repository..."
+    execute_command "git --git-dir=\"${DOTDIR}\" --work-tree=\"${HOME}\" config --local status.showUntrackedFiles no" "Configuring dotfiles..."
+
+    log_message "[i] Removing old dotfiles in the home directory..."
+    execute_command "rm -rf \$(find ${HOME} -maxdepth 1 -type f)" "Removing old dotfiles..."
+
+    execute_command "git --git-dir=\"${DOTDIR}\" --work-tree=\"${HOME}\" checkout" "Checking out dotfiles..."
+}
+
+# Prompt user for confirmation
+prompt_user() {
+    read -p "[?] Do you want to continue with the deployment? [y/N]: " choice
+    case "$choice" in
+        y|Y ) log_message "[i] User chose to continue.";;
+        * ) safe_exit "Deployment aborted by user.";;
     esac
 }
-set_language
 
-# Log- und Fehlerfunktionen
-log_info() {
-    echo -e "${INFO} $1"
-    echo "$(date +"%Y-%m-%d %H:%M:%S") INFO: $1" >> "$LOG_FILE"
-}
-
-log_warn() {
-    echo -e "${WARN} $1"
-    echo "$(date +"%Y-%m-%d %H:%M:%S") WARN: $1" >> "$LOG_FILE"
-}
-
-log_success() {
-    echo -e "${CHECK} $1"
-    echo "$(date +"%Y-%m-%d %H:%M:%S") SUCCESS: $1" >> "$LOG_FILE"
-}
-
-log_error() {
-    echo -e "${ERROR} $1" >&2
-    echo "$(date +"%Y-%m-%d %H:%M:%S") ERROR: $1" >> "$LOG_FILE"
-    exit 1
-}
-
-# Abhängigkeiten überprüfen
-check_dependencies() {
-    command -v git >/dev/null 2>&1 || log_error "Git ist nicht installiert. Bitte installieren Sie Git und versuchen Sie es erneut."
-}
-
-# Backup bestehender Dotfiles
-backup_dotfiles() {
-    dotfiles=$(git --git-dir="$GIT_DIR" --work-tree="$HOME" ls-tree -r HEAD --name-only)
-    backup_needed=false
-
-    for file in $dotfiles; do
-        if [ -f "$HOME/$file" ] || [ -d "$HOME/$file" ]; then
-            log_warn "$file wird ersetzt und nach $BACKUP_DIR/$file gesichert"
-            backup_needed=true
-        fi
-    done
-
-    if [ "$backup_needed" = true ]; then
-        read -p "Möchten Sie fortfahren und diese Dateien sichern und ersetzen? [y/N] " -n 1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            log_error "Operation abgebrochen"
-        fi
-
-        log_info "Sichern bestehender Dotfiles nach $BACKUP_DIR"
-        rsync -a "$HOME/" "$BACKUP_DIR/" --files-from=<(echo "$dotfiles") || log_error "Konnte Backup nicht erstellen"
-    else
-        log_info "Keine Dateien zum Sichern gefunden."
+# Function to handle repeated script execution
+handle_repeated_execution() {
+    if [ -d "${BACKUP_DIR}" ]; then
+        log_message "[!] Backup directory already exists. Previous backup will be overwritten."
+    fi
+    if [ -d "${DOTDIR}" ]; then
+        log_message "[!] Dotfiles directory already exists. It will be moved to the backup directory."
     fi
 }
 
-# Repository initialisieren
-initialize_repo() {
-    if [ ! -d "$GIT_DIR/HEAD" ]; then
-        log_info "Initialisiere Git-Repository"
-        git --git-dir="$GIT_DIR" init --bare || log_error "Konnte Git-Repository nicht initialisieren"
-    else
-        log_info "Git-Repository existiert bereits"
-
-        # Sicherstellen, dass die bestehende Konfiguration nicht überschrieben wird
-        log_warn "Git-Repository existiert bereits. Möchten Sie fortfahren und bestehende Konfiguration überschreiben?"
-        read -p "Bestätigen Sie mit [y/N] " -n 1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            log_error "Operation abgebrochen"
-        fi
-    fi
+# Main script execution starts here
+main() {
+    log_message "${BLUE}[i] Starting deployment script...${NC}"
+    install_dependencies
+    prompt_user
+    handle_repeated_execution
+    backup_files
+    initialize_and_checkout_dotfiles
+    log_message "${GREEN}[✔] Deployment completed successfully.${NC}"
 }
 
-# Exit trap einrichten, um das Skript zu löschen
-cleanup() {
-    log_info "Entferne das Skript"
-    if [[ -f "$0" ]]; then
-        rm -- "$0"
-    fi
-}
-trap cleanup EXIT
-
-# Hauptlogik
-check_dependencies
-
-# Prüfen, ob das Repository-Verzeichnis existiert
-if [ -d "$DOTFILES_DIR" ]; then
-    log_info "Dotfiles-Verzeichnis existiert bereits"
-else
-    log_info "Erstelle Dotfiles-Verzeichnis"
-    mkdir -p "$DOTFILES_DIR" || log_error "Konnte Dotfiles-Verzeichnis nicht erstellen"
-fi
-
-# Repository initialisieren
-initialize_repo
-
-# Klonen des Remote-Repositorys, falls eine URL angegeben ist
-if [ "$1" ]; then
-    REPO_URL="$1"
-    log_info "Klonen des Remote-Repositorys von $REPO_URL"
-    if git --git-dir="$GIT_DIR" remote get-url origin &>/dev/null; then
-        log_warn "Remote-Repository 'origin' existiert bereits. Aktualisiere Remote-URL."
-        git --git-dir="$GIT_DIR" remote set-url origin "$REPO_URL" || log_error "Konnte Remote-Repository-URL nicht aktualisieren"
-    else
-        git --git-dir="$GIT_DIR" remote add origin "$REPO_URL" || log_error "Konnte Remote-Repository nicht hinzufügen"
-    fi
-    git --git-dir="$GIT_DIR" --work-tree="$HOME" fetch origin || log_error "Konnte Dotfiles nicht klonen"
-fi
-
-# Backup der bestehenden Dotfiles durchführen
-backup_dotfiles
-
-# Sicherstellen, dass alle Dotfiles korrekt aus dem Remote-Repository ausgecheckt werden
-git --git-dir="$GIT_DIR" --work-tree="$HOME" reset --hard origin/main || log_error "Konnte Dotfiles nicht auschecken"
-git --git-dir="$GIT_DIR" --work-tree="$HOME" checkout -f main || log_error "Konnte Dotfiles nicht auschecken"
-
-# Ignorieren des .dotfiles-Verzeichnisses im Home-Verzeichnis
-log_info "Füge .dotfiles zu .gitignore hinzu"
-echo ".dotfiles" >> "$HOME/.gitignore"
-
-log_info "Dotfiles-Installation abgeschlossen"
+main "$@"
