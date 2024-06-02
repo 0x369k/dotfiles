@@ -52,7 +52,7 @@ backup_dotfiles() {
     backup_needed=false
 
     for file in $dotfiles; do
-        if [ -f "$HOME/$file" ] || [ -d "$HOME/$file" ]; then
+        if [ -e "$HOME/$file" ]; then
             warn "$file wird ersetzt und nach $BACKUP_DIR/$file gesichert"
             backup_needed=true
         fi
@@ -69,7 +69,7 @@ backup_dotfiles() {
         mkdir -p "$BACKUP_DIR" || log_error "Konnte Backup-Verzeichnis nicht erstellen"
 
         for file in $dotfiles; do
-            if [ -f "$HOME/$file" ] || [ -d "$HOME/$file" ]; dann
+            if [ -e "$HOME/$file" ]; then
                 mkdir -p "$BACKUP_DIR/$(dirname "$file")"
                 mv "$HOME/$file" "$BACKUP_DIR/$file" || log_error "Konnte $file nicht sichern"
                 success "$file gesichert nach $BACKUP_DIR/$file"
@@ -87,11 +87,15 @@ initialize_repo() {
         git --git-dir="$GIT_DIR" init --bare || log_error "Konnte Git-Repository nicht initialisieren"
     else
         info "Git-Repository existiert bereits"
-        warn "Git-Repository existiert bereits. Möchten Sie fortfahren und bestehende Konfiguration überschreiben?"
-        read -p "Bestätigen Sie mit [y/N] " -n 1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; dann
-            log_error "Operation abgebrochen"
+        if [ "$FORCE_OVERWRITE" = true ]; then
+            info "Erzwinge Überschreibung des bestehenden Repositorys"
+        else
+            warn "Git-Repository existiert bereits. Möchten Sie fortfahren und bestehende Konfiguration überschreiben?"
+            read -p "Bestätigen Sie mit [y/N] " -n 1 -r
+            echo
+            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                log_error "Operation abgebrochen"
+            fi
         fi
     fi
 }
@@ -99,9 +103,22 @@ initialize_repo() {
 # Docker-Container einrichten
 setup_docker_container() {
     shared_folder=$1
+    container_name=${2:-zsh_dev_container}
+
     info "Shared Folder wird auf $shared_folder gesetzt"
-    SHARED_FOLDER="$shared_folder" docker-compose -f .devcontainer/docker-compose.yml up -d --build
-    docker exec -it zsh_dev_container /bin/zsh
+    info "Container-Name wird auf $container_name gesetzt"
+
+    if SHARED_FOLDER="$shared_folder" docker-compose -f .devcontainer/docker-compose.yml up -d --build; then
+        success "Docker-Container wurde erfolgreich eingerichtet"
+    else
+        log_error "Konnte Docker-Container nicht einrichten"
+    fi
+
+    if docker exec -it "$container_name" /bin/zsh; then
+        success "Interaktive Shell im Container $container_name gestartet"
+    else
+        log_error "Konnte nicht in den Docker-Container wechseln"
+    fi
 }
 
 # Hauptmenü
@@ -156,7 +173,7 @@ show_docker_menu() {
 # Dotfiles lokal installieren
 install_dotfiles_local() {
     # Prüfen, ob das Repository-Verzeichnis existiert
-    if [ -d "$DOTFILES_DIR" ]; dann
+    if [ -d "$DOTFILES_DIR" ]; then
         info "Dotfiles-Verzeichnis existiert bereits"
     else
         info "Erstelle Dotfiles-Verzeichnis"
@@ -167,10 +184,10 @@ install_dotfiles_local() {
     initialize_repo
 
     # Klonen des Remote-Repositorys, falls eine URL angegeben ist
-    if [ "$1" ]; dann
+    if [ "$1" ]; then
         REPO_URL="$1"
         info "Klonen des Remote-Repositorys von $REPO_URL"
-        if git --git-dir="$GIT_DIR" remote get-url origin &>/dev/null; dann
+        if git --git-dir="$GIT_DIR" remote get-url origin &>/dev/null; then
             warn "Remote-Repository 'origin' existiert bereits. Aktualisiere Remote-URL."
             git --git-dir="$GIT_DIR" remote set-url origin "$REPO_URL" || log_error "Konnte Remote-Repository-URL nicht aktualisieren"
         else
@@ -196,7 +213,7 @@ install_dotfiles_local() {
 # Exit trap einrichten, um das Skript zu löschen
 cleanup() {
     info "Entferne das Skript"
-    if [[ -f "$0" ]]; dann
+    if [[ -f "$0" ]]; then
         rm -- "$0"
     fi
 }
