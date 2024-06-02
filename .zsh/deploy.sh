@@ -69,7 +69,7 @@ backup_dotfiles() {
         mkdir -p "$BACKUP_DIR" || log_error "Konnte Backup-Verzeichnis nicht erstellen"
 
         for file in $dotfiles; do
-            if [ -f "$HOME/$file" ] || [ -d "$HOME/$file" ]; dann
+            if [ -f "$HOME/$file" ] || [ -d "$HOME/$file" ]; then
                 mkdir -p "$BACKUP_DIR/$(dirname "$file")"
                 mv "$HOME/$file" "$BACKUP_DIR/$file" || log_error "Konnte $file nicht sichern"
                 success "$file gesichert nach $BACKUP_DIR/$file"
@@ -90,7 +90,7 @@ initialize_repo() {
         warn "Git-Repository existiert bereits. Möchten Sie fortfahren und bestehende Konfiguration überschreiben?"
         read -p "Bestätigen Sie mit [y/N] " -n 1 -r
         echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; dann
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
             log_error "Operation abgebrochen"
         fi
     fi
@@ -156,7 +156,7 @@ show_docker_menu() {
 # Dotfiles lokal installieren
 install_dotfiles_local() {
     # Prüfen, ob das Repository-Verzeichnis existiert
-    if [ -d "$DOTFILES_DIR" ]; dann
+    if [ -d "$DOTFILES_DIR" ]; then
         info "Dotfiles-Verzeichnis existiert bereits"
     else
         info "Erstelle Dotfiles-Verzeichnis"
@@ -167,10 +167,10 @@ install_dotfiles_local() {
     initialize_repo
 
     # Klonen des Remote-Repositorys, falls eine URL angegeben ist
-    if [ "$1" ]; dann
+    if [ "$1" ]; then
         REPO_URL="$1"
         info "Klonen des Remote-Repositorys von $REPO_URL"
-        if git --git-dir="$GIT_DIR" remote get-url origin &>/dev/null; dann
+        if git --git-dir="$GIT_DIR" remote get-url origin &>/dev/null; then
             warn "Remote-Repository 'origin' existiert bereits. Aktualisiere Remote-URL."
             git --git-dir="$GIT_DIR" remote set-url origin "$REPO_URL" || log_error "Konnte Remote-Repository-URL nicht aktualisieren"
         else
@@ -196,7 +196,7 @@ install_dotfiles_local() {
 # Exit trap einrichten, um das Skript zu löschen
 cleanup() {
     info "Entferne das Skript"
-    if [[ -f "$0" ]]; dann
+    if [[ -f "$0" ]]; then
         rm -- "$0"
     fi
 }
