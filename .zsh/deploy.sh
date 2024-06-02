@@ -42,8 +42,8 @@ success() {
 # Abhängigkeiten überprüfen
 check_dependencies() {
     command -v git >/dev/null 2>&1 || log_error "Git ist nicht installiert. Bitte installieren Sie Git und versuchen Sie es erneut."
-#    command -v docker >/dev/null 2>&1 || log_error "Docker ist nicht installiert. Bitte installieren Sie Docker und versuchen Sie es erneut."
-#    command -v docker-compose >/dev/null 2>&1 || log_error "Docker Compose ist nicht installiert. Bitte installieren Sie Docker Compose und versuchen Sie es erneut."
+ #   command -v docker >/dev/null 2>&1 || log_error "Docker ist nicht installiert. Bitte installieren Sie Docker und versuchen Sie es erneut."
+ #   command -v docker-compose >/dev/null 2>&1 || log_error "Docker Compose ist nicht installiert. Bitte installieren Sie Docker Compose und versuchen Sie es erneut."
 }
 
 # Backup bestehender Dotfiles
