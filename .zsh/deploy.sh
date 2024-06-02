@@ -141,7 +141,6 @@ handle_repeated_execution() {
 
 # Main script execution starts here
 main() {
-    trap 'rm -f /tmp/deploy.sh' EXIT
     log_message "i" "Starting deployment script..." "$BLUE"
     install_dependencies
     prompt_user
