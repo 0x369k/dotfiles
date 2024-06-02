@@ -139,7 +139,7 @@ install_dotfiles_local() {
         git --git-dir="$GIT_DIR" remote add origin "$REPO_URL" || log_error "Could not add remote repository"
     fi
 
-    git --git-dir="$GIT_DIR" --work-tree="$HOME" fetch origin || log_error "Could not clone dotfiles"
+    git --git-dir="$GIT_DIR" --work-tree="$HOME" fetch origin || log_error "Could not fetch dotfiles"
 
     if ! git --git-dir="$GIT_DIR" --work-tree="$HOME" ls-remote --exit-code --heads origin main &>/dev/null; then
         log_error "Branch 'origin/main' does not exist in the remote repository."
@@ -149,7 +149,7 @@ install_dotfiles_local() {
 
     # Set pull strategy and perform pull
     git --git-dir="$GIT_DIR" --work-tree="$HOME" config pull.rebase false
-    git --git-dir="$GIT_DIR" --work-tree="$HOME" pull origin main || log_error "Could not clone dotfiles"
+    git --git-dir="$GIT_DIR" --work-tree="$HOME" pull origin main --allow-unrelated-histories || log_error "Could not clone dotfiles"
 
     backup_dotfiles
 
@@ -188,5 +188,3 @@ trap cleanup EXIT
 
 # Start script
 main "$@"
-
-
