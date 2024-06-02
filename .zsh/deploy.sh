@@ -141,8 +141,12 @@ install_dotfiles_local() {
             git --git-dir="$GIT_DIR" remote add origin "$REPO_URL" || log_error "Konnte Remote-Repository nicht hinzufügen"
         fi
         git --git-dir="$GIT_DIR" --work-tree="$HOME" fetch origin || log_error "Konnte Dotfiles nicht klonen"
-        git --git-dir="$GIT_DIR" --work-tree="$HOME" fetch --all
-        git --git-dir="$GIT_DIR" --work-tree="$HOME" pull origin main || log_error "Konnte Dotfiles nicht klonen"
+
+        # Branch 'main' auschecken
+        git --git-dir="$GIT_DIR" --work-tree="$HOME" checkout main || log_error "Konnte Dotfiles nicht auschecken"
+
+        # Mit 'origin/main' mergen
+        git --git-dir="$GIT_DIR" --work-tree="$HOME" pull origin main || log_error "Konnte Dotfiles nicht mergen"
     fi
 
     # Backup der bestehenden Dotfiles durchführen
