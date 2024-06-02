@@ -42,8 +42,11 @@ success() {
 # Abhängigkeiten überprüfen
 check_dependencies() {
     command -v git >/dev/null 2>&1 || log_error "Git ist nicht installiert. Bitte installieren Sie Git und versuchen Sie es erneut."
-#    command -v docker >/dev/null 2>&1 || log_error "Docker ist nicht installiert. Bitte installieren Sie Docker und versuchen Sie es erneut."
-#    command -v docker-compose >/dev/null 2>&1 || log_error "Docker Compose ist nicht installiert. Bitte installieren Sie Docker Compose und versuchen Sie es erneut."
+}
+
+check_docker_dependencies() {
+    command -v docker >/dev/null 2>&1 || log_error "Docker ist nicht installiert. Bitte installieren Sie Docker und versuchen Sie es erneut."
+    command -v docker-compose >/dev/null 2>&1 || log_error "Docker Compose ist nicht installiert. Bitte installieren Sie Docker Compose und versuchen Sie es erneut."
 }
 
 # Backup bestehender Dotfiles
@@ -234,9 +237,22 @@ check_dependencies
 AUTO_CONFIRM=false
 while [[ "$#" -gt 0 ]]; do
     case $1 in
-        --local) AUTO_CONFIRM=true; install_dotfiles_local; exit 0 ;;
-        --docker) AUTO_CONFIRM=true; shift; setup_docker_container "$1"; exit 0 ;;
-        *) echo "Unbekannte Option: $1"; exit 1 ;;
+        --local)
+            AUTO_CONFIRM=true
+            install_dotfiles_local
+            exit 0
+            ;;
+        --docker)
+            AUTO_CONFIRM=true
+            check_docker_dependencies
+            shift
+            setup_docker_container "$1"
+            exit 0
+            ;;
+        *)
+            echo "Unbekannte Option: $1"
+            exit 1
+            ;;
     esac
     shift
 done
