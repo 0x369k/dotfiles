@@ -147,6 +147,9 @@ if [[ -d "$(pyenv root)/plugins/pyenv-virtualenv" ]]; then
   eval "$(pyenv virtualenv-init -)"
 fi
 
+zi ice from'gh-r' as'program' mv'vivid* vivid' sbin'**/vivid(.exe|) -> vivid'
+zi light @sharkdp/vivid
+
 zi for atclone'mkdir -p $ZPFX/{bin,man/man1}' atpull'%atclone' from'gh-r' dl'
   https://raw.githubusercontent.com/junegunn/fzf/master/shell/completion.zsh -> _fzf_completion;
   https://raw.githubusercontent.com/junegunn/fzf/master/shell/key-bindings.zsh -> key-bindings.zsh;

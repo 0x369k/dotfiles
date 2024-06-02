@@ -237,3 +237,9 @@ while [[ "$#" -gt 0 ]]; do
         --local) AUTO_CONFIRM=true; install_dotfiles_local; exit 0 ;;
         --docker) AUTO_CONFIRM=true; shift; setup_docker_container "$1"; exit 0 ;;
         *) echo "Unbekannte Option: $1"; exit 1 ;;
+    esac
+    shift
+done
+
+# Hauptmenü anzeigen, wenn keine Argumente übergeben wurden
+show_main_menu
