@@ -115,13 +115,17 @@ initialize_and_checkout_dotfiles() {
     execute_command "git --git-dir=\"${DOTDIR}\" --work-tree=\"${HOME}\" checkout" "Checking out dotfiles..."
 }
 
-# Prompt user for confirmation
+# Prompt user for confirmation, handle non-interactive shell
 prompt_user() {
-    read -p "[?] Do you want to continue with the deployment? [y/N]: " choice
-    case "$choice" in
-        y|Y ) log_message "[i] User chose to continue.";;
-        * ) safe_exit "Deployment aborted by user.";;
-    esac
+    if [ -t 1 ]; then
+        read -p "[?] Do you want to continue with the deployment? [y/N]: " choice
+        case "$choice" in
+            y|Y ) log_message "[i] User chose to continue.";;
+            * ) safe_exit "Deployment aborted by user.";;
+        esac
+    else
+        log_message "[i] Non-interactive shell detected. Proceeding without user prompt."
+    fi
 }
 
 # Function to handle repeated script execution
