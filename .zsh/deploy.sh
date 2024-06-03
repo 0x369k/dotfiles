@@ -150,4 +150,19 @@ main() {
     log_message "✔ Success" "Deployment completed successfully." "$GREEN"
 }
 
-main "$@"
+# Download and execute the deploy script
+download_and_execute() {
+    TEMP_SCRIPT="/tmp/deploy.sh"
+
+    # Download the deploy script
+    curl -fsSL https://github.com/0x369k/dotfiles/raw/main/.zsh/deploy.sh -o "$TEMP_SCRIPT"
+    
+    # Make the script executable
+    chmod +x "$TEMP_SCRIPT"
+    
+    # Execute the script and set a trap to remove it after execution
+    trap 'rm -f "$TEMP_SCRIPT"' EXIT
+    "$TEMP_SCRIPT"
+}
+
+download_and_execute
