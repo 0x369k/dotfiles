@@ -117,7 +117,6 @@ main() {
     # Überprüfen, ob das Skript bereits ausgeführt wird
     if [ "${BASH_SOURCE[0]}" != "$0" ]; then
         # Das Skript wird erneut ausgeführt
-        install_dependencies
         prompt_user
         handle_repeated_execution
         backup_files
