@@ -88,7 +88,7 @@ backup_files() {
     log_message "i" "Cloning dotfiles repository..." "$BLUE"
     execute_command "git clone --depth=1 \"${DOTFILES_REPO}\" \"${TEMP_DIR}\"" "Cloning dotfiles repository..."
 
-    log_message "i" "Backing up existing files..." "$BLUE"
+    log_message "i" "Backing up existing files" "$BLUE"
     while IFS= read -r -d '' file; do
         relative_path="${file#"${TEMP_DIR}/"}"
         target_dir="${BACKUP_DIR}/$(dirname "${relative_path}")"
@@ -134,7 +134,7 @@ handle_repeated_execution() {
     if [ -d "${BACKUP_DIR}" ]; then
         log_message "!" "Backup directory already exists. Previous backup will be overwritten." "$YELLOW"
     fi
-    if [ -d "${DOTDIR}" ]; then
+    if [ -d "${DOTDIR}" ];then
         log_message "!" "Dotfiles directory already exists. It will be moved to the backup directory." "$YELLOW"
     fi
 }
@@ -151,3 +151,5 @@ main() {
 }
 
 main "$@"
+
+    
