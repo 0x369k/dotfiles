@@ -7,18 +7,17 @@ YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Repositories and file URLs
+# Repositories und Dateipfade
 DOTFILES_REPO="https://github.com/0x369k/dotfiles.git"
 DOTDIR="${HOME}/.dotfiles"
 BACKUP_DIR="${HOME}/.dotfiles_backup/$(date +%Y-%m-%d_%H-%M-%S)"
 TEMP_DIR="/tmp/dotfiles_temp"
 LOG_FILE="/tmp/deploy.log"
+SCRIPT_URL="https://raw.githubusercontent.com/0x369k/dotfiles/main/.zsh/deploy.sh"
+DOWNLOAD_TEMP_DIR="/tmp/dotfiles_download"
+AUTO_CONFIRM=false
 
-# Load configuration if available
-CONFIG_FILE="${HOME}/.deploy_config"
-[ -f "$CONFIG_FILE" ] && source "$CONFIG_FILE"
-
-# Logging function for general messages
+# Protokollierung
 log_message() {
     local status="$1"
     local message="$2"
@@ -26,16 +25,16 @@ log_message() {
     echo -e "${color}[${status}] ${message}${NC}" | tee -a "$LOG_FILE"
 }
 
-# Enhanced safe_exit function with error logging
+# Sicheres Beenden mit Fehlerprotokollierung
 safe_exit() {
     local message="$1"
-    local code="${2:-1}" # Default exit status 1
+    local code="${2:-1}" # Standard-Exit-Status 1
     log_message "✘ Error" "$message" "$RED"
     [ -d "${TEMP_DIR}" ] && rm -rf "${TEMP_DIR}"
     exit "$code"
 }
 
-# Enhanced error handling
+# Verbesserte Fehlerbehandlung
 execute_command() {
     local command="$1"
     local message="$2"
@@ -50,37 +49,8 @@ execute_command() {
     fi
 }
 
-# Function to check and install dependencies
-install_dependencies() {
-    log_message "i" "Checking for required dependencies..." "$BLUE"
-    if ! command -v git &> /dev/null; then
-        log_message "i" "git is not installed. Installing git..." "$BLUE"
-        if command -v apt-get &> /dev/null; then
-            sudo apt-get update && sudo apt-get install -y git
-        elif command -v yum &> /dev/null; then
-            sudo yum install -y git
-        elif command -v pacman &> /dev/null; then
-            sudo pacman -Sy git
-        else
-            safe_exit "Package manager not supported. Please install git manually."
-        fi
-    fi
 
-    if ! command -v curl &> /dev/null; then
-        log_message "i" "curl is not installed. Installing curl..." "$BLUE"
-        if command -v apt-get &> /dev/null; then
-            sudo apt-get update && sudo apt-get install -y curl
-        elif command -v yum &> /dev/null; then
-            sudo yum install -y curl
-        elif command -v pacman &> /dev/null; then
-            sudo pacman -Sy curl
-        else
-            safe_exit "Package manager not supported. Please install curl manually."
-        fi
-    fi
-}
-
-# Function to backup files with progress indication
+# Funktion zum Sichern von Dateien
 backup_files() {
     log_message "i" "Creating backup directory: ${BACKUP_DIR}" "$BLUE"
     mkdir -p "${BACKUP_DIR}" || safe_exit "Could not create backup directory"
@@ -88,12 +58,12 @@ backup_files() {
     log_message "i" "Cloning dotfiles repository..." "$BLUE"
     execute_command "git clone --depth=1 \"${DOTFILES_REPO}\" \"${TEMP_DIR}\"" "Cloning dotfiles repository..."
 
-    log_message "i" "Backing up existing files" "$BLUE"
+    log_message "i" "Backing up existing files..." "$BLUE"
     while IFS= read -r -d '' file; do
         relative_path="${file#"${TEMP_DIR}/"}"
         target_dir="${BACKUP_DIR}/$(dirname "${relative_path}")"
         mkdir -p "${target_dir}"
-        if [ -e "${HOME}/${relative_path}" ]; then
+        if [ -e "${HOME}/${relative_path}" ];then
             log_message "i" "Backing up: ${HOME}/${relative_path}" "$BLUE"
             mv "${HOME}/${relative_path}" "${target_dir}/" || safe_exit "Failed to backup ${relative_path}"
         fi
@@ -102,7 +72,7 @@ backup_files() {
     rm -rf "${TEMP_DIR}"
 }
 
-# Function to initialize and checkout dotfiles
+# Funktion zum initialisieren und auschecken von dotfiles
 initialize_and_checkout_dotfiles() {
     if [ -d "${DOTDIR}" ]; then
         execute_command "mv \"${DOTDIR}\" \"${BACKUP_DIR}/\"" "Moving existing ${DOTDIR} to backup directory..."
@@ -116,7 +86,7 @@ initialize_and_checkout_dotfiles() {
     execute_command "git --git-dir=\"${DOTDIR}\" --work-tree=\"${HOME}\" checkout" "Checking out dotfiles..."
 }
 
-# Prompt user for confirmation, handle non-interactive shell
+# Benutzerabfrage
 prompt_user() {
     if [ -t 1 ]; then
         read -p "[?] Do you want to continue with the deployment? [y/N]: " choice
@@ -126,30 +96,46 @@ prompt_user() {
         esac
     else
         log_message "i" "Non-interactive shell detected. Proceeding without user prompt." "$BLUE"
+        AUTO_CONFIRM=true
     fi
 }
 
-# Function to handle repeated script execution
+# Behandlung wiederholter Skriptausführung
 handle_repeated_execution() {
     if [ -d "${BACKUP_DIR}" ]; then
         log_message "!" "Backup directory already exists. Previous backup will be overwritten." "$YELLOW"
     fi
-    if [ -d "${DOTDIR}" ];then
+    if [ -d "${DOTDIR}" ]; then
         log_message "!" "Dotfiles directory already exists. It will be moved to the backup directory." "$YELLOW"
     fi
 }
 
-# Main script execution starts here
+# Hauptsache des Skripts
 main() {
     log_message "i" "Starting deployment script..." "$BLUE"
-    install_dependencies
-    prompt_user
-    handle_repeated_execution
-    backup_files
-    initialize_and_checkout_dotfiles
-    log_message "✔ Success" "Deployment completed successfully." "$GREEN"
+
+    # Überprüfen, ob das Skript bereits ausgeführt wird
+    if [ "${BASH_SOURCE[0]}" != "$0" ]; then
+        # Das Skript wird erneut ausgeführt
+        install_dependencies
+        prompt_user
+        handle_repeated_execution
+        backup_files
+        initialize_and_checkout_dotfiles
+        log_message "✔ Success" "Deployment completed successfully." "$GREEN"
+    else
+        # Das Skript wird zum ersten Mal ausgeführt
+        mkdir -p "${DOWNLOAD_TEMP_DIR}"
+        execute_command
+        mkdir -p "${DOWNLOAD_TEMP_DIR}"
+        execute_command "curl -Lks '${SCRIPT_URL}' -o '${DOWNLOAD_TEMP_DIR}/deploy.sh'" "Downloading deployment script..."
+
+        # Skript erneut ausführen
+        chmod +x "${DOWNLOAD_TEMP_DIR}/deploy.sh"
+        "${DOWNLOAD_TEMP_DIR}/deploy.sh"
+        rm -rf "${DOWNLOAD_TEMP_DIR}"
+    fi
 }
 
+# Hauptskript-Ausführung aufrufen
 main "$@"
-
-    
