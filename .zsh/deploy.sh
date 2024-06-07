@@ -218,7 +218,11 @@ download_and_execute_script() {
     curl -Lks "$SCRIPT_URL" -o "$TEMP_SCRIPT" || safe_exit "Fehler beim Herunterladen des Skripts"
     log_message "i" "Führe das heruntergeladene Skript aus..." "$YELLOW"
     chmod +x "$TEMP_SCRIPT" || safe_exit "Fehler beim Setzen der Ausführungsberechtigung für das Skript"
-    bash "$TEMP_SCRIPT" || safe_exit "Fehler beim Ausführen des temporären Skripts"
+    bash "$TEMP_SCRIPT"
+    local exit_code=$?
+    if [ $exit_code -ne 0 ]; then
+        safe_exit "Fehler beim Ausführen des temporären Skripts"
+    fi
     log_message "✔" "Ausführung des heruntergeladenen Skripts abgeschlossen." "$GREEN"
     rm -f "$TEMP_SCRIPT" || safe_exit "Fehler beim Löschen des temporären Skripts"
 }
