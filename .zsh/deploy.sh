@@ -130,7 +130,7 @@ initialize_and_checkout_dotfiles() {
         execute_command "mv \"${DOTDIR}\" \"${BACKUP_DIR}/\"" "Verschiebe bestehendes ${DOTDIR} ins Backup-Verzeichnis"
     fi
     execute_command "git clone --bare \"${DOTFILES_REPO}\" \"${DOTDIR}\"" "Klone bare Repository"
-    execute_command "git --git-dir=\"${DOTDIR}\" --work-tree=\"${HOME}\" config --local status.showUntrackedFiles no" "Konfiguriere Dotfiles"
+    execute_command "git --git-dir=\"${DOTDIR}\" --work-tree=\"${WORKSPACE_DIR}\" config --local status.showUntrackedFiles no" "Konfiguriere Dotfiles"
 
     log_message "i" "Entferne alte Dotfiles im Home-Verzeichnis..." "$YELLOW"
     find "${WORKSPACE_DIR}" -maxdepth 1 -type f -exec rm -rf {} \; || safe_exit "Entfernen alter Dotfiles fehlgeschlagen"
@@ -155,6 +155,16 @@ parse_args() {
         esac
         shift
     done
+}
+
+# Funktion zum Umgang mit wiederholter Skriptausführung
+handle_repeated_execution() {
+    if [ -d "${BACKUP_DIR}" ]; then
+        log_message "!" "Backup-Verzeichnis existiert bereits. Vorheriges Backup wird überschrieben." "$YELLOW"
+    fi
+    if [ -d "${DOTDIR}" ]; then
+        log_message "!" "Dotfiles-Verzeichnis existiert bereits. Es wird ins Backup-Verzeichnis verschoben." "$YELLOW"
+    fi
 }
 
 # Hauptskriptausführung beginnt hier
