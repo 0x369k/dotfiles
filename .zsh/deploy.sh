@@ -15,7 +15,8 @@ DOTDIR="${HOME}/.dotfiles"
 BACKUP_DIR="${HOME}/.dotfiles_backup/$(date +%Y-%m-%d_%H-%M-%S)"
 TEMP_DIR="/tmp/dotfiles_temp"
 LOG_FILE="/tmp/deploy.log"
-SKIP_CONFIRMATION=false
+SCRIPT_URL="https://raw.githubusercontent.com/0x369k/dotfiles/main/.zsh/deploy.sh"
+TEMP_SCRIPT="/tmp/deploy_temp.sh"
 
 # Konfiguration laden, falls vorhanden
 CONFIG_FILE="${HOME}/.deploy_config"
@@ -35,6 +36,7 @@ safe_exit() {
     local code="${2:-1}" # Standard Exit-Status 1
     log_message "✘" "$message" "$RED"
     [ -d "${TEMP_DIR}" ] && rm -rf "${TEMP_DIR}"
+    [ -f "${TEMP_SCRIPT}" ] && rm -f "${TEMP_SCRIPT}"
     exit "$code"
 }
 
@@ -139,11 +141,6 @@ initialize_and_checkout_dotfiles() {
 
 # Benutzer zur Bestätigung auffordern, nicht-interaktiven Shell berücksichtigen
 prompt_user() {
-    if [ "$SKIP_CONFIRMATION" = true ]; then
-        log_message "i" "Bestätigung übersprungen aufgrund der --skip-confirmation Option." "$YELLOW"
-        return
-    fi
-
     if [ -t 1 ]; then
         echo -e "${YELLOW}Folgende Aktionen werden durchgeführt:${NC}"
         echo -e "${YELLOW}1. Überprüfen und ggf. Installieren von Abhängigkeiten (git, curl).${NC}"
@@ -202,11 +199,8 @@ parse_args() {
                 LOG_FILE="$2"
                 shift
                 ;;
-            --skip-confirmation)
-                SKIP_CONFIRMATION=true
-                ;;
             --help)
-                echo "Usage: $0 [--repo REPO_URL] [--dotdir DOTDIR] [--backup-dir BACKUP_DIR] [--log-file LOG_FILE] [--skip-confirmation]"
+                echo "Usage: $0 [--repo REPO_URL] [--dotdir DOTDIR] [--backup-dir BACKUP_DIR] [--log-file LOG_FILE]"
                 exit 0
                 ;;
             *)
@@ -218,16 +212,20 @@ parse_args() {
     done
 }
 
+# Funktion zum Herunterladen und Ausführen des Skripts
+download_and_execute_script() {
+    log_message "i" "Lade das Skript herunter..." "$YELLOW"
+    curl -Lks "$SCRIPT_URL" -o "$TEMP_SCRIPT" || safe_exit "Fehler beim Herunterladen des Skripts"
+    log_message "i" "Führe das heruntergeladene Skript aus..." "$YELLOW"
+    bash "$TEMP_SCRIPT"
+    log_message "✔" "Ausführung des heruntergeladenen Skripts abgeschlossen." "$GREEN"
+    rm -f "$TEMP_SCRIPT" || safe_exit "Fehler beim Löschen des temporären Skripts"
+}
+
 # Hauptskriptausführung beginnt hier
 main() {
     parse_args "$@"
-    log_message "i" "Starte Deployment-Skript..." "$YELLOW"
-    install_dependencies
-    prompt_user
-    handle_repeated_execution
-    backup_files
-    initialize_and_checkout_dotfiles
-    log_message "✔" "Deployment erfolgreich abgeschlossen." "$GREEN"
+    download_and_execute_script
 }
 
 main "$@"
