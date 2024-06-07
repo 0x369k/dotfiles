@@ -177,6 +177,7 @@ prompt_user() {
     fi
 }
 
+
 # Funktion zum Umgang mit wiederholter Skriptausführung
 handle_repeated_execution() {
     if [ -d "${BACKUP_DIR}" ]; then
@@ -230,7 +231,6 @@ download_and_execute_script() {
     log_message "✔" "Ausführung des heruntergeladenen Skripts abgeschlossen." "$GREEN"
     rm -f "$TEMP_SCRIPT" || safe_exit "Fehler beim Löschen des temporären Skripts"
 }
-
 
 
 
