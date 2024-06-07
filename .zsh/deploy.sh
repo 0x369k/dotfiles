@@ -217,7 +217,8 @@ download_and_execute_script() {
     log_message "i" "Lade das Skript herunter..." "$YELLOW"
     curl -Lks "$SCRIPT_URL" -o "$TEMP_SCRIPT" || safe_exit "Fehler beim Herunterladen des Skripts"
     log_message "i" "Führe das heruntergeladene Skript aus..." "$YELLOW"
-    bash "$TEMP_SCRIPT"
+    chmod +x "$TEMP_SCRIPT" || safe_exit "Fehler beim Setzen der Ausführungsberechtigung für das Skript"
+    bash "$TEMP_SCRIPT" || safe_exit "Fehler beim Ausführen des temporären Skripts"
     log_message "✔" "Ausführung des heruntergeladenen Skripts abgeschlossen." "$GREEN"
     rm -f "$TEMP_SCRIPT" || safe_exit "Fehler beim Löschen des temporären Skripts"
 }
@@ -225,8 +226,17 @@ download_and_execute_script() {
 # Hauptskriptausführung beginnt hier
 main() {
     parse_args "$@"
-    download_and_execute_script
-    install_dependencies
+    if [ "$(basename "$0")" == "deploy_temp.sh" ]; then
+        # Hauptlogik des Skripts hier einfügen
+        install_dependencies
+        prompt_user
+        handle_repeated_execution
+        backup_files
+        initialize_and_checkout_dotfiles
+        log_message "✔" "Deployment erfolgreich abgeschlossen." "$GREEN"
+    else
+        download_and_execute_script
+    fi
 }
 
 main "$@"
