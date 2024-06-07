@@ -148,28 +148,29 @@ initialize_and_checkout_dotfiles() {
 # Benutzer zur Bestätigung auffordern, nicht-interaktiven Shell berücksichtigen
 prompt_user() {
     if [ -t 1 ]; then
-        echo -e "${YELLOW}Folgende Aktionen werden durchgeführt:${NC}"
-        echo -e "${YELLOW}1. Sichern bestehender Dateien in ${BACKUP_DIR}.${NC}"
-        echo -e "${YELLOW}2. Klonen des Dotfiles-Repositories in ein temporäres Verzeichnis.${NC}"
-        echo -e "${YELLOW}3. Verschieben bestehender Dotfiles nach ${BACKUP_DIR}.${NC}"
-        echo -e "${YELLOW}4. Klonen des bare Repositories in ${DOTDIR}.${NC}"
-        echo -e "${YELLOW}5. Konfigurieren und Auschecken der Dotfiles in das Home-Verzeichnis.${NC}"
-        echo -e "${YELLOW}6. Überprüfen und ggf. Installieren von Abhängigkeiten (git, curl).${NC}"
-        
-        read -p "$(echo -e ${YELLOW}? Möchten Sie mit dem Deployment fortfahren? [y/N]: ${NC})" choice
+        # ... (bestehender Code) ...
+
+        read -p "$(echo -e ${YELLOW}? Möchten Sie mit dem Deployment fortfahren? Geben Sie 'y' ein, um fortzufahren, oder 'n' zum Abbrechen: ${NC})" choice
         case "$choice" in
-            y|Y ) 
+            y|Y )
                 log_message "i" "Benutzer hat zugestimmt." "$YELLOW"
-                log_message "i" "Die folgenden Dateien werden gesichert:" "$YELLOW"
-                for file in $(find "${TEMP_DIR}" -type f -print); do
-                    relative_path="${file#"${TEMP_DIR}/"}"
-                    if [ -e "${HOME}/${relative_path}" ]; then
-                        echo -e "${YELLOW}  ${HOME}/${relative_path} -> ${BACKUP_DIR}/${relative_path}${NC}"
-                    fi
-                done
                 ;;
-            * ) safe_exit "Deployment vom Benutzer abgebrochen.";;
+            * )
+                safe_exit "Deployment vom Benutzer abgebrochen."
+                ;;
         esac
+
+        if [ ! -d "${TEMP_DIR}" ]; then
+            safe_exit "Temporäres Verzeichnis ${TEMP_DIR} konnte nicht erstellt werden."
+        fi
+
+        log_message "i" "Die folgenden Dateien werden gesichert:" "$YELLOW"
+        while IFS= read -r -d '' file; do
+            relative_path="${file#"${TEMP_DIR}/"}"
+            if [ -e "${HOME}/${relative_path}" ]; then
+                echo -e "${YELLOW}  ${HOME}/${relative_path} -> ${BACKUP_DIR}/${relative_path}${NC}"
+            fi
+        done < <(find "${TEMP_DIR}" -type f -print0)
     else
         log_message "i" "Nicht-interaktive Shell erkannt. Fortfahren ohne Benutzeraufforderung." "$YELLOW"
         return 0
