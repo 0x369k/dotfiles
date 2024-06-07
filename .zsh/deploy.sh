@@ -143,12 +143,12 @@ initialize_and_checkout_dotfiles() {
 prompt_user() {
     if [ -t 1 ]; then
         echo -e "${YELLOW}Folgende Aktionen werden durchgeführt:${NC}"
-        echo -e "${YELLOW}1. Überprüfen und ggf. Installieren von Abhängigkeiten (git, curl).${NC}"
-        echo -e "${YELLOW}2. Sichern bestehender Dateien in ${BACKUP_DIR}.${NC}"
-        echo -e "${YELLOW}3. Klonen des Dotfiles-Repositories in ein temporäres Verzeichnis.${NC}"
-        echo -e "${YELLOW}4. Verschieben bestehender Dotfiles nach ${BACKUP_DIR}.${NC}"
-        echo -e "${YELLOW}5. Klonen des bare Repositories in ${DOTDIR}.${NC}"
-        echo -e "${YELLOW}6. Konfigurieren und Auschecken der Dotfiles in das Home-Verzeichnis.${NC}"
+        echo -e "${YELLOW}1. Sichern bestehender Dateien in ${BACKUP_DIR}.${NC}"
+        echo -e "${YELLOW}2. Klonen des Dotfiles-Repositories in ein temporäres Verzeichnis.${NC}"
+        echo -e "${YELLOW}3. Verschieben bestehender Dotfiles nach ${BACKUP_DIR}.${NC}"
+        echo -e "${YELLOW}4. Klonen des bare Repositories in ${DOTDIR}.${NC}"
+        echo -e "${YELLOW}5. Konfigurieren und Auschecken der Dotfiles in das Home-Verzeichnis.${NC}"
+        echo -e "${YELLOW}6. Überprüfen und ggf. Installieren von Abhängigkeiten (git, curl).${NC}"
         
         read -p "$(echo -e ${YELLOW}? Möchten Sie mit dem Deployment fortfahren? [y/N]: ${NC})" choice
         case "$choice" in
@@ -226,6 +226,7 @@ download_and_execute_script() {
 main() {
     parse_args "$@"
     download_and_execute_script
+    install_dependencies
 }
 
 main "$@"
