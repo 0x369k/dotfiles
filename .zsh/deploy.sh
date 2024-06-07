@@ -4,7 +4,6 @@
 GREEN='\033[0;32m'
 RED='\033[0;31m'
 YELLOW='\033[0;33m'
-BLUE='\033[0;34m'
 NC='\033[0m' # Keine Farbe
 BOLD='\033[1m'
 NORMAL='\033[0m'
@@ -15,12 +14,6 @@ DOTDIR="${HOME}/.dotfiles"
 BACKUP_DIR="${HOME}/.dotfiles_backup/$(date +%Y-%m-%d_%H-%M-%S)"
 TEMP_DIR="/tmp/dotfiles_temp"
 LOG_FILE="/tmp/deploy.log"
-SCRIPT_URL="https://raw.githubusercontent.com/0x369k/dotfiles/main/.zsh/deploy.sh"
-TEMP_SCRIPT="/tmp/deploy_temp.sh"
-
-# Konfiguration laden, falls vorhanden
-CONFIG_FILE="${HOME}/.deploy_config"
-[ -f "$CONFIG_FILE" ] && source "$CONFIG_FILE"
 
 # Protokollierungsfunktion für allgemeine Nachrichten
 log_message() {
@@ -29,14 +22,6 @@ log_message() {
     local color="$3"
     echo -e "${color}${status}${NC} ${message}" | tee -a "$LOG_FILE"
 }
-
-# Exit-Trap-Funktion zum Aufräumen
-cleanup() {
-    log_message "i" "Bereinige temporäre Dateien..." "$YELLOW"
-    [ -d "${TEMP_DIR}" ] && rm -rf "${TEMP_DIR}"
-    [ -f "${TEMP_SCRIPT}" ] && rm -f "${TEMP_SCRIPT}"
-}
-trap cleanup EXIT
 
 # Verbesserte safe_exit Funktion mit Fehlerprotokollierung
 safe_exit() {
@@ -145,39 +130,6 @@ initialize_and_checkout_dotfiles() {
     execute_command "git --git-dir=\"${DOTDIR}\" --work-tree=\"${HOME}\" checkout" "Checke Dotfiles aus"
 }
 
-# Benutzer zur Bestätigung auffordern, nicht-interaktiven Shell berücksichtigen
-prompt_user() {
-    if [ -t 1 ]; then
-        # ... (bestehender Code) ...
-
-        read -p "$(echo -e ${YELLOW}? Möchten Sie mit dem Deployment fortfahren? Geben Sie 'y' ein, um fortzufahren, oder 'n' zum Abbrechen: ${NC})" choice
-        case "$choice" in
-            y|Y )
-                log_message "i" "Benutzer hat zugestimmt." "$YELLOW"
-                ;;
-            * )
-                safe_exit "Deployment vom Benutzer abgebrochen."
-                ;;
-        esac
-
-        if [ ! -d "${TEMP_DIR}" ]; then
-            safe_exit "Temporäres Verzeichnis ${TEMP_DIR} konnte nicht erstellt werden."
-        fi
-
-        log_message "i" "Die folgenden Dateien werden gesichert:" "$YELLOW"
-        while IFS= read -r -d '' file; do
-            relative_path="${file#"${TEMP_DIR}/"}"
-            if [ -e "${HOME}/${relative_path}" ]; then
-                echo -e "${YELLOW}  ${HOME}/${relative_path} -> ${BACKUP_DIR}/${relative_path}${NC}"
-            fi
-        done < <(find "${TEMP_DIR}" -type f -print0)
-    else
-        log_message "i" "Nicht-interaktive Shell erkannt. Fortfahren ohne Benutzeraufforderung." "$YELLOW"
-        return 0
-    fi
-}
-
-
 # Funktion zum Umgang mit wiederholter Skriptausführung
 handle_repeated_execution() {
     if [ -d "${BACKUP_DIR}" ]; then
@@ -188,65 +140,13 @@ handle_repeated_execution() {
     fi
 }
 
-# Funktionen zum Parsen von Argumenten
-parse_args() {
-    while [ "$#" -gt 0 ]; do
-        case "$1" in
-            --repo)
-                DOTFILES_REPO="$2"
-                shift
-                ;;
-            --dotdir)
-                DOTDIR="$2"
-                shift
-                ;;
-            --backup-dir)
-                BACKUP_DIR="$2"
-                shift
-                ;;
-            --log-file)
-                LOG_FILE="$2"
-                shift
-                ;;
-            --help)
-                echo "Usage: $0 [--repo REPO_URL] [--dotdir DOTDIR] [--backup-dir BACKUP_DIR] [--log-file LOG_FILE]"
-                exit 0
-                ;;
-            *)
-                echo "Unknown parameter: $1"
-                exit 1
-                ;;
-        esac
-        shift
-    done
-}
-
-# Funktion zum Herunterladen und Ausführen des Skripts
-download_and_execute_script() {
-    log_message "i" "Lade das Skript herunter..." "$YELLOW"
-    curl -Lks "$SCRIPT_URL" -o "$TEMP_SCRIPT" || safe_exit "Fehler beim Herunterladen des Skripts"
-    log_message "i" "Führe das heruntergeladene Skript aus..." "$YELLOW"
-    chmod +x "$TEMP_SCRIPT" || safe_exit "Fehler beim Setzen der Ausführungsberechtigung für das Skript"
-    bash "$TEMP_SCRIPT" || safe_exit "Fehler beim Ausführen des temporären Skripts"
-    log_message "✔" "Ausführung des heruntergeladenen Skripts abgeschlossen." "$GREEN"
-    rm -f "$TEMP_SCRIPT" || safe_exit "Fehler beim Löschen des temporären Skripts"
-}
-
-
-
 # Hauptskriptausführung beginnt hier
 main() {
-    parse_args "$@"
-    if [ "$(basename "$0")" != "$(basename "$TEMP_SCRIPT")" ]; then
-        download_and_execute_script
-    else
-        install_dependencies
-        prompt_user
-        handle_repeated_execution
-        backup_files
-        initialize_and_checkout_dotfiles
-        log_message "✔" "Deployment erfolgreich abgeschlossen." "$GREEN"
-    fi
+    install_dependencies
+    handle_repeated_execution
+    backup_files
+    initialize_and_checkout_dotfiles
+    log_message "✔" "Deployment erfolgreich abgeschlossen." "$GREEN"
 }
 
 main "$@"
