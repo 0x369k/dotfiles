@@ -15,6 +15,7 @@ DOTDIR="${HOME}/.dotfiles"
 BACKUP_DIR="${HOME}/.dotfiles_backup/$(date +%Y-%m-%d_%H-%M-%S)"
 TEMP_DIR="/tmp/dotfiles_temp"
 LOG_FILE="/tmp/deploy.log"
+SKIP_CONFIRMATION=false
 
 # Konfiguration laden, falls vorhanden
 CONFIG_FILE="${HOME}/.deploy_config"
@@ -138,6 +139,11 @@ initialize_and_checkout_dotfiles() {
 
 # Benutzer zur Bestätigung auffordern, nicht-interaktiven Shell berücksichtigen
 prompt_user() {
+    if [ "$SKIP_CONFIRMATION" = true ]; then
+        log_message "i" "Bestätigung übersprungen aufgrund der --skip-confirmation Option." "$YELLOW"
+        return
+    fi
+
     if [ -t 1 ]; then
         echo -e "${YELLOW}Folgende Aktionen werden durchgeführt:${NC}"
         echo -e "${YELLOW}1. Überprüfen und ggf. Installieren von Abhängigkeiten (git, curl).${NC}"
@@ -196,8 +202,11 @@ parse_args() {
                 LOG_FILE="$2"
                 shift
                 ;;
+            --skip-confirmation)
+                SKIP_CONFIRMATION=true
+                ;;
             --help)
-                echo "Usage: $0 [--repo REPO_URL] [--dotdir DOTDIR] [--backup-dir BACKUP_DIR] [--log-file LOG_FILE]"
+                echo "Usage: $0 [--repo REPO_URL] [--dotdir DOTDIR] [--backup-dir BACKUP_DIR] [--log-file LOG_FILE] [--skip-confirmation]"
                 exit 0
                 ;;
             *)
