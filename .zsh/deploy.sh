@@ -30,13 +30,19 @@ log_message() {
     echo -e "${color}${status}${NC} ${message}" | tee -a "$LOG_FILE"
 }
 
+# Exit-Trap-Funktion zum Aufräumen
+cleanup() {
+    log_message "i" "Bereinige temporäre Dateien..." "$YELLOW"
+    [ -d "${TEMP_DIR}" ] && rm -rf "${TEMP_DIR}"
+    [ -f "${TEMP_SCRIPT}" ] && rm -f "${TEMP_SCRIPT}"
+}
+trap cleanup EXIT
+
 # Verbesserte safe_exit Funktion mit Fehlerprotokollierung
 safe_exit() {
     local message="$1"
     local code="${2:-1}" # Standard Exit-Status 1
     log_message "✘" "$message" "$RED"
-    [ -d "${TEMP_DIR}" ] && rm -rf "${TEMP_DIR}"
-    [ -f "${TEMP_SCRIPT}" ] && rm -f "${TEMP_SCRIPT}"
     exit "$code"
 }
 
