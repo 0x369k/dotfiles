@@ -226,16 +226,15 @@ download_and_execute_script() {
 # Hauptskriptausführung beginnt hier
 main() {
     parse_args "$@"
-    if [ "$(basename "$0")" == "deploy_temp.sh" ]; then
-        # Hauptlogik des Skripts hier einfügen
+    if [ "$0" != "$TEMP_SCRIPT" ]; then
+        download_and_execute_script
+    else
         install_dependencies
         prompt_user
         handle_repeated_execution
         backup_files
         initialize_and_checkout_dotfiles
         log_message "✔" "Deployment erfolgreich abgeschlossen." "$GREEN"
-    else
-        download_and_execute_script
     fi
 }
 
