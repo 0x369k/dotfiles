@@ -14,7 +14,7 @@ DOTDIR="${HOME}/.dotfiles"
 BACKUP_DIR="${HOME}/.dotfiles_backup/$(date +%Y-%m-%d_%H-%M-%S)"
 TEMP_DIR="/tmp/dotfiles_temp"
 LOG_FILE="/tmp/deploy.log"
-WORKSPACE_DIR="${HOME}"
+WORKSPACE_DIR="/home/developer"
 
 # Protokollierungsfunktion für allgemeine Nachrichten
 log_message() {
@@ -23,13 +23,6 @@ log_message() {
     local color="$3"
     echo -e "${color}${status}${NC} ${message}" | tee -a "$LOG_FILE"
 }
-
-# Exit-Trap-Funktion zum Aufräumen
-cleanup() {
-    log_message "i" "Bereinige temporäre Dateien..." "$YELLOW"
-    [ -d "${TEMP_DIR}" ] && rm -rf "${TEMP_DIR}"
-}
-trap cleanup EXIT
 
 # Verbesserte safe_exit Funktion mit Fehlerprotokollierung
 safe_exit() {
@@ -112,9 +105,9 @@ backup_files() {
         relative_path="${file#"${TEMP_DIR}/"}"
         target_dir="${BACKUP_DIR}/$(dirname "${relative_path}")"
         mkdir -p "${target_dir}"
-        if [ -e "${WORKSPACE_DIR}/${relative_path}" ]; then
-            if mv "${WORKSPACE_DIR}/${relative_path}" "${target_dir}/"; then
-                log_message "✔" "Sichere: ${BOLD}${WORKSPACE_DIR}/${relative_path}${NORMAL} nach ${BOLD}${target_dir}/${relative_path}${NORMAL}" "$GREEN"
+        if [ -e "${HOME}/${relative_path}" ]; then
+            if mv "${HOME}/${relative_path}" "${target_dir}/"; then
+                log_message "✔" "Sichere: ${BOLD}${HOME}/${relative_path}${NORMAL} nach ${BOLD}${target_dir}/${relative_path}${NORMAL}" "$GREEN"
             else
                 log_message "✘" "Sichern von ${relative_path} fehlgeschlagen" "$RED"
             fi
@@ -130,40 +123,66 @@ initialize_and_checkout_dotfiles() {
         execute_command "mv \"${DOTDIR}\" \"${BACKUP_DIR}/\"" "Verschiebe bestehendes ${DOTDIR} ins Backup-Verzeichnis"
     fi
     execute_command "git clone --bare \"${DOTFILES_REPO}\" \"${DOTDIR}\"" "Klone bare Repository"
-    execute_command "git --git-dir=\"${DOTDIR}\" --work-tree=\"${WORKSPACE_DIR}\" config --local status.showUntrackedFiles no" "Konfiguriere Dotfiles"
+    execute_command "git --git-dir=\"${DOTDIR}\" --work-tree=\"${HOME}\" config --local status.showUntrackedFiles no" "Konfiguriere Dotfiles"
 
     log_message "i" "Entferne alte Dotfiles im Home-Verzeichnis..." "$YELLOW"
-    find "${WORKSPACE_DIR}" -maxdepth 1 -type f -exec rm -rf {} \; || safe_exit "Entfernen alter Dotfiles fehlgeschlagen"
+    find "${HOME}" -maxdepth 1 -type f -exec rm -rf {} \; || safe_exit "Entfernen alter Dotfiles fehlgeschlagen"
 
-    execute_command "git --git-dir=\"${DOTDIR}\" --work-tree=\"${WORKSPACE_DIR}\" checkout" "Checke Dotfiles aus"
+    execute_command "git --git-dir=\"${DOTDIR}\" --work-tree=\"${HOME}\" checkout" "Checke Dotfiles aus"
 }
 
 # Funktion zum Parsen von Argumenten
 parse_args() {
-    while [[ "$#" -gt 0 ]]; do
-        case $1 in
+    while [ "$#" -gt 0 ]; do
+        case "$1" in
             --local)
-                WORKSPACE_DIR="$2"
+                INTERACTIVE=true
                 shift
                 ;;
             --docker)
-                log_message "i" "Docker-Umgebung erkannt. Fortfahren ohne Benutzeraufforderung." "$YELLOW"
+                INTERACTIVE=false
+                shift
+                ;;
+            --workspace)
+                WORKSPACE_DIR="$2"
+                shift 2
+                ;;
+            --repo)
+                DOTFILES_REPO="$2"
+                shift 2
+                ;;
+            --help)
+                echo "Usage: $0 [--local] [--docker] [--workspace DIR] [--repo REPO_URL]"
+                exit 0
                 ;;
             *)
-                safe_exit "Unbekannte Option: $1"
+                echo "Unknown parameter: $1"
+                exit 1
                 ;;
         esac
-        shift
     done
 }
 
-# Funktion zum Umgang mit wiederholter Skriptausführung
-handle_repeated_execution() {
-    if [ -d "${BACKUP_DIR}" ]; then
-        log_message "!" "Backup-Verzeichnis existiert bereits. Vorheriges Backup wird überschrieben." "$YELLOW"
-    fi
-    if [ -d "${DOTDIR}" ]; then
-        log_message "!" "Dotfiles-Verzeichnis existiert bereits. Es wird ins Backup-Verzeichnis verschoben." "$YELLOW"
+# Benutzer zur Bestätigung auffordern, nicht-interaktive Shell berücksichtigen
+prompt_user() {
+    if [ "${INTERACTIVE}" = true ]; then
+        echo -e "${YELLOW}Folgende Aktionen werden durchgeführt:${NC}"
+        echo -e "${YELLOW}1. Sichern bestehender Dateien in ${BACKUP_DIR}.${NC}"
+        echo -e "${YELLOW}2. Klonen des Dotfiles-Repositories in ein temporäres Verzeichnis.${NC}"
+        echo -e "${YELLOW}3. Verschieben bestehender Dotfiles nach ${BACKUP_DIR}.${NC}"
+        echo -e "${YELLOW}4. Klonen des bare Repositories in ${DOTDIR}.${NC}"
+        echo -e "${YELLOW}5. Konfigurieren und Auschecken der Dotfiles in das Home-Verzeichnis.${NC}"
+        echo -e "${YELLOW}6. Überprüfen und ggf. Installieren von Abhängigkeiten (git, curl).${NC}"
+        
+        read -p "$(echo -e ${YELLOW}? Möchten Sie mit dem Deployment fortfahren? [y/N]: ${NC})" choice
+        case "$choice" in
+            y|Y ) 
+                log_message "i" "Benutzer hat zugestimmt." "$YELLOW"
+                ;;
+            * ) safe_exit "Deployment vom Benutzer abgebrochen.";;
+        esac
+    else
+        log_message "i" "Nicht-interaktive Shell erkannt. Fortfahren ohne Benutzeraufforderung." "$YELLOW"
     fi
 }
 
@@ -171,6 +190,7 @@ handle_repeated_execution() {
 main() {
     parse_args "$@"
     install_dependencies
+    prompt_user
     handle_repeated_execution
     backup_files
     initialize_and_checkout_dotfiles
