@@ -166,6 +166,7 @@ prompt_user() {
         esac
     else
         log_message "i" "Nicht-interaktive Shell erkannt. Fortfahren ohne Benutzeraufforderung." "$YELLOW"
+        return 0
     fi
 }
 
@@ -230,7 +231,7 @@ download_and_execute_script() {
 # Hauptskriptausführung beginnt hier
 main() {
     parse_args "$@"
-    if [ "$0" != "$TEMP_SCRIPT" ]; then
+    if [ "$(basename "$0")" != "$(basename "$TEMP_SCRIPT")" ]; then
         download_and_execute_script
     else
         install_dependencies
