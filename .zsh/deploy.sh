@@ -14,6 +14,7 @@ DOTDIR="${HOME}/.dotfiles"
 BACKUP_DIR="${HOME}/.dotfiles_backup/$(date +%Y-%m-%d_%H-%M-%S)"
 TEMP_DIR="/tmp/dotfiles_temp"
 LOG_FILE="/tmp/deploy.log"
+WORKSPACE_DIR="${HOME}"
 
 # Protokollierungsfunktion für allgemeine Nachrichten
 log_message() {
@@ -22,6 +23,13 @@ log_message() {
     local color="$3"
     echo -e "${color}${status}${NC} ${message}" | tee -a "$LOG_FILE"
 }
+
+# Exit-Trap-Funktion zum Aufräumen
+cleanup() {
+    log_message "i" "Bereinige temporäre Dateien..." "$YELLOW"
+    [ -d "${TEMP_DIR}" ] && rm -rf "${TEMP_DIR}"
+}
+trap cleanup EXIT
 
 # Verbesserte safe_exit Funktion mit Fehlerprotokollierung
 safe_exit() {
@@ -104,9 +112,9 @@ backup_files() {
         relative_path="${file#"${TEMP_DIR}/"}"
         target_dir="${BACKUP_DIR}/$(dirname "${relative_path}")"
         mkdir -p "${target_dir}"
-        if [ -e "${HOME}/${relative_path}" ]; then
-            if mv "${HOME}/${relative_path}" "${target_dir}/"; then
-                log_message "✔" "Sichere: ${BOLD}${HOME}/${relative_path}${NORMAL} nach ${BOLD}${target_dir}/${relative_path}${NORMAL}" "$GREEN"
+        if [ -e "${WORKSPACE_DIR}/${relative_path}" ]; then
+            if mv "${WORKSPACE_DIR}/${relative_path}" "${target_dir}/"; then
+                log_message "✔" "Sichere: ${BOLD}${WORKSPACE_DIR}/${relative_path}${NORMAL} nach ${BOLD}${target_dir}/${relative_path}${NORMAL}" "$GREEN"
             else
                 log_message "✘" "Sichern von ${relative_path} fehlgeschlagen" "$RED"
             fi
@@ -125,23 +133,33 @@ initialize_and_checkout_dotfiles() {
     execute_command "git --git-dir=\"${DOTDIR}\" --work-tree=\"${HOME}\" config --local status.showUntrackedFiles no" "Konfiguriere Dotfiles"
 
     log_message "i" "Entferne alte Dotfiles im Home-Verzeichnis..." "$YELLOW"
-    find "${HOME}" -maxdepth 1 -type f -exec rm -rf {} \; || safe_exit "Entfernen alter Dotfiles fehlgeschlagen"
+    find "${WORKSPACE_DIR}" -maxdepth 1 -type f -exec rm -rf {} \; || safe_exit "Entfernen alter Dotfiles fehlgeschlagen"
 
-    execute_command "git --git-dir=\"${DOTDIR}\" --work-tree=\"${HOME}\" checkout" "Checke Dotfiles aus"
+    execute_command "git --git-dir=\"${DOTDIR}\" --work-tree=\"${WORKSPACE_DIR}\" checkout" "Checke Dotfiles aus"
 }
 
-# Funktion zum Umgang mit wiederholter Skriptausführung
-handle_repeated_execution() {
-    if [ -d "${BACKUP_DIR}" ]; then
-        log_message "!" "Backup-Verzeichnis existiert bereits. Vorheriges Backup wird überschrieben." "$YELLOW"
-    fi
-    if [ -d "${DOTDIR}" ]; then
-        log_message "!" "Dotfiles-Verzeichnis existiert bereits. Es wird ins Backup-Verzeichnis verschoben." "$YELLOW"
-    fi
+# Funktion zum Parsen von Argumenten
+parse_args() {
+    while [[ "$#" -gt 0 ]]; do
+        case $1 in
+            --local)
+                WORKSPACE_DIR="$2"
+                shift
+                ;;
+            --docker)
+                log_message "i" "Docker-Umgebung erkannt. Fortfahren ohne Benutzeraufforderung." "$YELLOW"
+                ;;
+            *)
+                safe_exit "Unbekannte Option: $1"
+                ;;
+        esac
+        shift
+    done
 }
 
 # Hauptskriptausführung beginnt hier
 main() {
+    parse_args "$@"
     install_dependencies
     handle_repeated_execution
     backup_files
