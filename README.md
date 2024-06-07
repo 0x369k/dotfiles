@@ -1,5 +1,6 @@
 # Dotfiles
 
+
 Optimized Zsh configurations for enhanced productivity on Arch Linux & KDE, featuring the powerful Zi plugin manager for a seamless, modular command line experience. 
 
 You can also run the installation script directly using `curl`:
