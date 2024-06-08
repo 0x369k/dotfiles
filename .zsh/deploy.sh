@@ -186,6 +186,14 @@ prompt_user() {
     fi
 }
 
+# Funktion zur Überprüfung, ob das Skript bereits ausgeführt wird
+handle_repeated_execution() {
+    if [ -f "$LOG_FILE" ]; then
+        log_message "i" "Das Skript scheint bereits ausgeführt zu werden. Überspringe redundante Schritte." "$YELLOW"
+        return
+    fi
+}
+
 # Hauptskriptausführung beginnt hier
 main() {
     parse_args "$@"
