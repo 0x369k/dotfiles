@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -x  # Aktivieren des Debug-Modus
+
 # Farbcodes
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -15,6 +17,7 @@ BACKUP_DIR="${HOME}/.dotfiles_backup/$(date +%Y-%m-%d_%H-%M-%S)"
 TEMP_DIR="/tmp/dotfiles_temp"
 LOG_FILE="/tmp/deploy.log"
 WORKSPACE_DIR="/home/developer"
+INTERACTIVE=false
 
 # Protokollierungsfunktion für allgemeine Nachrichten
 log_message() {
