@@ -14,8 +14,8 @@ NORMAL='\033[0m'
 DOTFILES_REPO="https://github.com/0x369k/dotfiles.git"
 DOTDIR="${HOME}/.dotfiles"
 BACKUP_DIR="${HOME}/.dotfiles_backup/$(date +%Y-%m-%d_%H-%M-%S)"
-TEMP_DIR="/tmp/dotfiles_temp"
-LOG_FILE="/tmp/deploy.log"
+TEMP_DIR=$(mktemp -d -t dotfiles_temp-XXXXXXXXXX)
+LOG_FILE=$(mktemp -t deploy.log-XXXXXXXXXX)
 WORKSPACE_DIR="/home/developer"
 INTERACTIVE=false
 
@@ -75,6 +75,12 @@ install_package() {
         execute_command "sudo yum install -y $package" "Installiere $package"
     elif command -v pacman &> /dev/null; then
         execute_command "sudo pacman -Sy $package" "Installiere $package"
+    elif command -v dnf &> /dev/null; then
+        execute_command "sudo dnf install -y $package" "Installiere $package"
+    elif command -v brew &> /dev/null; then
+        execute_command "brew install $package" "Installiere $package"
+    elif command -v zypper &> /dev/null; then
+        execute_command "sudo zypper install -y $package" "Installiere $package"
     else
         safe_exit "Paketmanager nicht unterstützt. Bitte installiere $package manuell."
     fi
