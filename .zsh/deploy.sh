@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
 
-# Farbcodes
+set -x  # Enable debug mode
+
+# Color codes
 GREEN='\033[0;32m'
 RED='\033[0;31m'
 YELLOW='\033[0;33m'
-NC='\033[0m' # Keine Farbe
+NC='\033[0m' # No color
 BOLD='\033[1m'
 NORMAL='\033[0m'
 
-# Standardwerte für Konfigurationen
+# Default configuration values
 DOTFILES_REPO="https://github.com/0x369k/dotfiles.git"
 DOTDIR="${HOME}/.dotfiles"
 BACKUP_DIR="${HOME}/.dotfiles_backup/$(date +%Y-%m-%d_%H-%M-%S)"
@@ -17,7 +19,7 @@ LOG_FILE=$(mktemp -t deploy.log-XXXXXXXXXX)
 WORKSPACE_DIR="/home/developer"
 INTERACTIVE=false
 
-# Protokollierungsfunktion für allgemeine Nachrichten
+# Logging function for general messages
 log_message() {
     local status="$1"
     local message="$2"
@@ -25,15 +27,15 @@ log_message() {
     echo -e "${color}${status}${NC} ${message}" | tee -a "$LOG_FILE"
 }
 
-# Verbesserte safe_exit Funktion mit Fehlerprotokollierung
+# Improved safe_exit function with error logging
 safe_exit() {
     local message="$1"
-    local code="${2:-1}" # Standard Exit-Status 1
+    local code="${2:-1}" # Default exit status 1
     log_message "✘" "$message" "$RED"
     exit "$code"
 }
 
-# Verbesserte Fehlerbehandlung
+# Improved error handling
 execute_command() {
     local command="$1"
     local message="$2"
@@ -42,49 +44,49 @@ execute_command() {
     log_message "i" "$message" "$YELLOW"
 
     if $ignore_error; then
-        eval "$command" 2>>"$LOG_FILE" && log_message "✔" "$message abgeschlossen." "$GREEN" || {
-            log_message "✘" "$message fehlgeschlagen." "$RED"
+        eval "$command" 2>>"$LOG_FILE" && log_message "✔" "$message completed." "$GREEN" || {
+            log_message "✘" "$message failed." "$RED"
             true
         }
     else
-        eval "$command" 2>>"$LOG_FILE" && log_message "✔" "$message abgeschlossen." "$GREEN" || safe_exit "$message fehlgeschlagen."
+        eval "$command" 2>>"$LOG_FILE" && log_message "✔" "$message completed." "$GREEN" || safe_exit "$message failed."
     fi
 }
 
-# Funktion zum Überprüfen und Installieren von Abhängigkeiten
+# Function to check and install dependencies
 install_dependencies() {
-    log_message "i" "Überprüfe erforderliche Abhängigkeiten..." "$YELLOW"
+    log_message "i" "Checking required dependencies..." "$YELLOW"
     for dep in git curl; do
         if ! command -v "$dep" &> /dev/null; then
-            log_message "i" "${BOLD}$dep${NORMAL} ist nicht installiert. Installiere ${BOLD}$dep${NORMAL}..." "$YELLOW"
+            log_message "i" "${BOLD}$dep${NORMAL} is not installed. Installing ${BOLD}$dep${NORMAL}..." "$YELLOW"
             install_package "$dep"
         else
-            log_message "✔" "${BOLD}$dep${NORMAL} ist bereits installiert." "$GREEN"
+            log_message "✔" "${BOLD}$dep${NORMAL} is already installed." "$GREEN"
         fi
     done
 }
 
-# Funktion zum Installieren eines Pakets basierend auf dem verfügbaren Paketmanager
+# Function to install a package based on the available package manager
 install_package() {
     local package="$1"
     if command -v apt-get &> /dev/null; then
-        execute_command "sudo apt-get update && sudo apt-get install -y $package" "Installiere $package"
+        execute_command "sudo apt-get update && sudo apt-get install -y $package" "Installing $package"
     elif command -v yum &> /dev/null; then
-        execute_command "sudo yum install -y $package" "Installiere $package"
+        execute_command "sudo yum install -y $package" "Installing $package"
     elif command -v pacman &> /dev/null; then
-        execute_command "sudo pacman -Sy $package" "Installiere $package"
+        execute_command "sudo pacman -Sy $package" "Installing $package"
     elif command -v dnf &> /dev/null; then
-        execute_command "sudo dnf install -y $package" "Installiere $package"
+        execute_command "sudo dnf install -y $package" "Installing $package"
     elif command -v brew &> /dev/null; then
-        execute_command "brew install $package" "Installiere $package"
+        execute_command "brew install $package" "Installing $package"
     elif command -v zypper &> /dev/null; then
-        execute_command "sudo zypper install -y $package" "Installiere $package"
+        execute_command "sudo zypper install -y $package" "Installing $package"
     else
-        safe_exit "Paketmanager nicht unterstützt. Bitte installiere $package manuell."
+        safe_exit "Unsupported package manager. Please install $package manually."
     fi
 }
 
-# Funktion zur Anzeige eines Fortschrittsbalkens
+# Function to show a progress bar
 show_progress() {
     local pid=$!
     local delay=0.1
@@ -99,24 +101,24 @@ show_progress() {
     printf "    \b\b\b\b"
 }
 
-# Funktion zum Sichern von Dateien mit Erfolgs-/Fehleranzeige
+# Function to back up files with success/failure indication
 backup_files() {
-    log_message "i" "Erstelle Backup-Verzeichnis: ${BOLD}${BACKUP_DIR}${NORMAL}" "$YELLOW"
-    mkdir -p "${BACKUP_DIR}" || safe_exit "Konnte Backup-Verzeichnis nicht erstellen"
+    log_message "i" "Creating backup directory: ${BOLD}${BACKUP_DIR}${NORMAL}" "$YELLOW"
+    mkdir -p "${BACKUP_DIR}" || safe_exit "Could not create backup directory"
 
-    log_message "i" "Klone Dotfiles Repository..." "$YELLOW"
-    execute_command "git clone --depth=1 \"${DOTFILES_REPO}\" \"${TEMP_DIR}\"" "Klone Dotfiles Repository"
+    log_message "i" "Cloning dotfiles repository..." "$YELLOW"
+    execute_command "git clone --depth=1 \"${DOTFILES_REPO}\" \"${TEMP_DIR}\"" "Cloning dotfiles repository"
 
-    log_message "i" "Sichere bestehende Dateien..." "$YELLOW"
+    log_message "i" "Backing up existing files..." "$YELLOW"
     ( find "${TEMP_DIR}" -type f -print0 | while IFS= read -r -d '' file; do
         relative_path="${file#"${TEMP_DIR}/"}"
         target_dir="${BACKUP_DIR}/$(dirname "${relative_path}")"
         mkdir -p "${target_dir}"
         if [ -e "${HOME}/${relative_path}" ]; then
             if mv "${HOME}/${relative_path}" "${target_dir}/"; then
-                log_message "✔" "Sichere: ${BOLD}${HOME}/${relative_path}${NORMAL} nach ${BOLD}${target_dir}/${relative_path}${NORMAL}" "$GREEN"
+                log_message "✔" "Backed up: ${BOLD}${HOME}/${relative_path}${NORMAL} to ${BOLD}${target_dir}/${relative_path}${NORMAL}" "$GREEN"
             else
-                log_message "✘" "Sichern von ${relative_path} fehlgeschlagen" "$RED"
+                log_message "✘" "Failed to back up ${relative_path}" "$RED"
             fi
         fi
     done ) &
@@ -124,28 +126,24 @@ backup_files() {
     rm -rf "${TEMP_DIR}"
 }
 
-# Funktion zum Initialisieren und Auschecken der Dotfiles
+# Function to initialize and check out dotfiles
 initialize_and_checkout_dotfiles() {
     if [ -d "${DOTDIR}" ]; then
-        execute_command "mv \"${DOTDIR}\" \"${BACKUP_DIR}/\"" "Verschiebe bestehendes ${DOTDIR} ins Backup-Verzeichnis"
+        execute_command "mv \"${DOTDIR}\" \"${BACKUP_DIR}/\"" "Moving existing ${DOTDIR} to backup directory"
     fi
-    execute_command "git clone --bare \"${DOTFILES_REPO}\" \"${DOTDIR}\"" "Klone bare Repository"
-    execute_command "git --git-dir=\"${DOTDIR}\" --work-tree=\"${HOME}\" config --local status.showUntrackedFiles no" "Konfiguriere Dotfiles"
+    execute_command "git clone --bare \"${DOTFILES_REPO}\" \"${DOTDIR}\"" "Cloning bare repository"
+    execute_command "git --git-dir=\"${DOTDIR}\" --work-tree=\"${HOME}\" config --local status.showUntrackedFiles no" "Configuring dotfiles"
 
-    log_message "i" "Entferne alte Dotfiles im Home-Verzeichnis..." "$YELLOW"
-    find "${HOME}" -maxdepth 1 -type f -exec rm -rf {} \; || safe_exit "Entfernen alter Dotfiles fehlgeschlagen"
+    log_message "i" "Removing old dotfiles in home directory..." "$YELLOW"
+    find "${HOME}" -maxdepth 1 -type f -exec rm -rf {} \; || safe_exit "Failed to remove old dotfiles"
 
-    execute_command "git --git-dir=\"${DOTDIR}\" --work-tree=\"${HOME}\" checkout" "Checke Dotfiles aus"
+    execute_command "git --git-dir=\"${DOTDIR}\" --work-tree=\"${HOME}\" checkout" "Checking out dotfiles"
 }
 
-# Funktion zum Parsen von Argumenten
+# Function to parse arguments
 parse_args() {
     while [ "$#" -gt 0 ]; do
         case "$1" in
-            --local)
-                INTERACTIVE=true
-                shift
-                ;;
             --docker)
                 INTERACTIVE=false
                 shift
@@ -159,7 +157,7 @@ parse_args() {
                 shift 2
                 ;;
             --help)
-                echo "Usage: $0 [--local] [--docker] [--workspace DIR] [--repo REPO_URL]"
+                echo "Usage: $0 [--docker] [--workspace DIR] [--repo REPO_URL]"
                 exit 0
                 ;;
             *)
@@ -170,38 +168,38 @@ parse_args() {
     done
 }
 
-# Benutzer zur Bestätigung auffordern, nicht-interaktive Shell berücksichtigen
+# Prompt user for confirmation, consider non-interactive shell
 prompt_user() {
     if [ "${INTERACTIVE}" = true ]; then
-        echo -e "${YELLOW}Folgende Aktionen werden durchgeführt:${NC}"
-        echo -e "${YELLOW}1. Sichern bestehender Dateien in ${BACKUP_DIR}.${NC}"
-        echo -e "${YELLOW}2. Klonen des Dotfiles-Repositories in ein temporäres Verzeichnis.${NC}"
-        echo -e "${YELLOW}3. Verschieben bestehender Dotfiles nach ${BACKUP_DIR}.${NC}"
-        echo -e "${YELLOW}4. Klonen des bare Repositories in ${DOTDIR}.${NC}"
-        echo -e "${YELLOW}5. Konfigurieren und Auschecken der Dotfiles in das Home-Verzeichnis.${NC}"
-        echo -e "${YELLOW}6. Überprüfen und ggf. Installieren von Abhängigkeiten (git, curl).${NC}"
+        echo -e "${YELLOW}The following actions will be performed:${NC}"
+        echo -e "${YELLOW}1. Backing up existing files to ${BACKUP_DIR}.${NC}"
+        echo -e "${YELLOW}2. Cloning the dotfiles repository into a temporary directory.${NC}"
+        echo -e "${YELLOW}3. Moving existing dotfiles to ${BACKUP_DIR}.${NC}"
+        echo -e "${YELLOW}4. Cloning the bare repository into ${DOTDIR}.${NC}"
+        echo -e "${YELLOW}5. Configuring and checking out the dotfiles into the home directory.${NC}"
+        echo -e "${YELLOW}6. Checking and installing dependencies (git, curl).${NC}"
         
-        read -p "$(echo -e ${YELLOW}? Möchten Sie mit dem Deployment fortfahren? [y/N]: ${NC})" choice
+        read -p "$(echo -e ${YELLOW}? Do you want to proceed with the deployment? [y/N]: ${NC})" choice
         case "$choice" in
             y|Y ) 
-                log_message "i" "Benutzer hat zugestimmt." "$YELLOW"
+                log_message "i" "User consented." "$YELLOW"
                 ;;
-            * ) safe_exit "Deployment vom Benutzer abgebrochen.";;
+            * ) safe_exit "Deployment aborted by user.";;
         esac
     else
-        log_message "i" "Nicht-interaktive Shell erkannt. Fortfahren ohne Benutzeraufforderung." "$YELLOW"
+        log_message "i" "Non-interactive shell detected. Proceeding without user prompt." "$YELLOW"
     fi
 }
 
-# Funktion zur Überprüfung, ob das Skript bereits ausgeführt wird
+# Function to check if the script is already running
 handle_repeated_execution() {
     if [ -f "$LOG_FILE" ]; then
-        log_message "i" "Das Skript scheint bereits ausgeführt zu werden. Überspringe redundante Schritte." "$YELLOW"
+        log_message "i" "The script appears to be already running. Skipping redundant steps." "$YELLOW"
         return
     fi
 }
 
-# Hauptskriptausführung beginnt hier
+# Main script execution starts here
 main() {
     parse_args "$@"
     install_dependencies
@@ -209,7 +207,7 @@ main() {
     handle_repeated_execution
     backup_files
     initialize_and_checkout_dotfiles
-    log_message "✔" "Deployment erfolgreich abgeschlossen." "$GREEN"
+    log_message "✔" "Deployment successfully completed." "$GREEN"
 }
 
 main "$@"
