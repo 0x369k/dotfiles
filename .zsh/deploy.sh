@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -x  # Enable debug mode
+
 # Color codes
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -16,6 +18,8 @@ TEMP_DIR=$(mktemp -d -t dotfiles_temp-XXXXXXXXXX)
 LOG_FILE=$(mktemp -t deploy.log-XXXXXXXXXX)
 WORKSPACE_DIR="/home/developer"
 INTERACTIVE=false
+DOCKER_MODE=false
+DOCKER_WORKSPACE=""
 
 # Logging function for general messages
 log_message() {
@@ -138,13 +142,29 @@ initialize_and_checkout_dotfiles() {
     execute_command "git --git-dir=\"${DOTDIR}\" --work-tree=\"${HOME}\" checkout" "Checking out dotfiles"
 }
 
+# Function to run the script inside a Docker container
+run_in_docker() {
+    local docker_workspace="${1:-/home/developer}"
+
+    # Pull the Docker image and run the container
+    docker run --rm -v "${PWD}:${docker_workspace}" -w "${docker_workspace}" archlinux:latest bash -c "\
+        pacman -Syu --noconfirm && \
+        pacman -S --noconfirm git curl && \
+        curl -fsSL https://github.com/0x369k/dotfiles/raw/main/.zsh/deploy.sh | bash -s"
+}
+
 # Function to parse arguments
 parse_args() {
     while [ "$#" -gt 0 ]; do
         case "$1" in
             --docker)
-                INTERACTIVE=false
-                shift
+                DOCKER_MODE=true
+                if [ -n "$2" ] && [[ "$2" != --* ]]; then
+                    DOCKER_WORKSPACE="$2"
+                    shift 2
+                else
+                    shift
+                fi
                 ;;
             --workspace)
                 WORKSPACE_DIR="$2"
@@ -155,7 +175,7 @@ parse_args() {
                 shift 2
                 ;;
             --help)
-                echo "Usage: $0 [--docker] [--workspace DIR] [--repo REPO_URL]"
+                echo "Usage: $0 [--docker [PATH]] [--workspace DIR] [--repo REPO_URL]"
                 exit 0
                 ;;
             *)
@@ -200,12 +220,16 @@ handle_repeated_execution() {
 # Main script execution starts here
 main() {
     parse_args "$@"
-    install_dependencies
-    prompt_user
-    handle_repeated_execution
-    backup_files
-    initialize_and_checkout_dotfiles
-    log_message "✔" "Deployment successfully completed." "$GREEN"
+    if [ "$DOCKER_MODE" = true ]; then
+        run_in_docker "$DOCKER_WORKSPACE"
+    else
+        install_dependencies
+        prompt_user
+        handle_repeated_execution
+        backup_files
+        initialize_and_checkout_dotfiles
+        log_message "✔" "Deployment successfully completed." "$GREEN"
+    fi
 }
 
 main "$@"
