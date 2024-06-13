@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  zsh-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        USER_NAME: ${USER_NAME:-developer}
+    image: zsh-dev
+    container_name: zsh_dev_container
+    volumes:
+      - ${PWD}:/home/${USER_NAME:-developer}
+    tty: true
+    stdin_open: true
+    user: "${USER_NAME:-developer}"
+    working_dir: /home/${USER_NAME:-developer}
+    environment:
+      - USER_NAME=${USER_NAME:-developer}
+      - WORKSPACE_FOLDER=/home/${USER_NAME:-developer}
