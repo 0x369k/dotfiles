@@ -10,6 +10,12 @@ NC='\033[0m' # No color
 BOLD='\033[1m'
 NORMAL='\033[0m'
 
+# Check if running in a Dev Container
+if [ "$DEVCONTAINER" = "true" ]; then
+    echo -e "${YELLOW}Running inside a Dev Container. Exiting script.${NC}"
+    exit 0
+fi
+
 # Default configuration values
 DOTFILES_REPO="https://github.com/0x369k/dotfiles.git"
 DOTDIR="${HOME}/.dotfiles"

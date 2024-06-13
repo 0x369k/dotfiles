@@ -24,4 +24,3 @@ CMD ["/bin/bash", "-c", "curl -fsSL https://github.com/0x369k/dotfiles/raw/main/
 
 # Set the default command or program to run when the container starts
 USER $USER_NAME
-
