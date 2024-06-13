@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-set -x  # Enable debug mode
-
 # Color codes
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -20,6 +18,7 @@ WORKSPACE_DIR="/home/developer"
 INTERACTIVE=false
 DOCKER_MODE=false
 DOCKER_WORKSPACE=""
+CONTAINER_NAME="zsh_dev_container"
 
 # Logging function for general messages
 log_message() {
@@ -147,7 +146,7 @@ run_in_docker() {
     local docker_workspace="${1:-/home/developer}"
 
     # Pull the Docker image and run the container
-    docker run --rm -v "${PWD}:${docker_workspace}" -w "${docker_workspace}" archlinux:latest bash -c "\
+    docker run --rm --name ${CONTAINER_NAME} -v "${PWD}:${docker_workspace}" -w "${docker_workspace}" archlinux:latest bash -c "\
         pacman -Syu --noconfirm && \
         pacman -S --noconfirm git curl && \
         curl -fsSL https://github.com/0x369k/dotfiles/raw/main/.zsh/deploy.sh | bash -s"
