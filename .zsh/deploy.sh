@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -x  # Enable debug mode
+
 # Color codes
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -142,7 +144,6 @@ initialize_and_checkout_dotfiles() {
 }
 
 # Function to run the script inside a Docker container
-# Function to run the script inside a Docker container
 run_in_docker() {
     local docker_workspace="${1:-/home/developer}"
 
@@ -150,7 +151,7 @@ run_in_docker() {
     docker run --rm --name ${CONTAINER_NAME} -v "${PWD}:${docker_workspace}" -w "${docker_workspace}" -u developer archlinux:latest bash -c "\
         sudo pacman -Syu --noconfirm --needed && \
         sudo pacman -S --noconfirm --needed git curl && \
-        curl -fsSL https://github.com/0x369k/dotfiles/raw/main/.zsh/deploy.sh | bash -s"
+        curl -fsSL https://github.com/0x369k/dotfiles/raw/main/.zsh/deploy.sh | bash -s -- --docker"
 }
 
 # Function to parse arguments
