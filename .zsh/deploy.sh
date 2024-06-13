@@ -148,7 +148,7 @@ run_in_docker() {
     local docker_workspace="${1:-/home/developer}"
 
     # Pull the Docker image and run the container
-    docker run --rm --name ${CONTAINER_NAME} -v "${PWD}:${docker_workspace}" -w "${docker_workspace}" -u developer archlinux:latest bash -c "\
+    docker run --rm --name ${CONTAINER_NAME} -v "${PWD}:${docker_workspace}" -w "${docker_workspace}" archlinux:latest bash -c "\
         sudo pacman -Syu --noconfirm --needed && \
         sudo pacman -S --noconfirm --needed git curl && \
         curl -fsSL https://github.com/0x369k/dotfiles/raw/main/.zsh/deploy.sh | bash -s -- --docker"
