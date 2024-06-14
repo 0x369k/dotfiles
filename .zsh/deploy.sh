@@ -25,6 +25,7 @@ LOG_FILE=$(mktemp -t deploy.log-XXXXXXXXXX)
 WORKSPACE_DIR="/home/developer"
 INTERACTIVE=false
 DOCKER_MODE=false
+LOCAL_MODE=false
 DOCKER_WORKSPACE=""
 CONTAINER_NAME="zsh_dev_container"
 
@@ -181,8 +182,12 @@ parse_args() {
                 DOTFILES_REPO="$2"
                 shift 2
                 ;;
+            --local)
+                LOCAL_MODE=true
+                shift
+                ;;
             --help)
-                echo "Usage: $0 [--docker [PATH]] [--workspace DIR] [--repo REPO_URL]"
+                echo "Usage: $0 [--docker [PATH]] [--workspace DIR] [--repo REPO_URL] [--local]"
                 exit 0
                 ;;
             *)
@@ -229,13 +234,16 @@ main() {
     parse_args "$@"
     if [ "$DOCKER_MODE" = true ]; then
         run_in_docker "$DOCKER_WORKSPACE"
-    else
+    elif [ "$LOCAL_MODE" = true ]; then
         install_dependencies
         prompt_user
         handle_repeated_execution
         backup_files
         initialize_and_checkout_dotfiles
         log_message "✔" "Deployment successfully completed." "$GREEN"
+    else
+        echo "Unknown execution mode. Use --docker or --local."
+        exit 1
     fi
 }
 
