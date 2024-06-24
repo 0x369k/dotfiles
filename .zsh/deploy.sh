@@ -1,149 +1,193 @@
 #!/usr/bin/env bash
 
-set -e  # Abbruch bei Fehlern
-set -u  # Abbruch bei Verwendung nicht definierter Variablen
+set -x  # Enable debug mode
 
-# Farbdefinitionen
-GREEN='\\033[0;32m'
-RED='\\033[0;31m'
-YELLOW='\\033[0;33m'
-NC='\\033[0m' # No color
-BOLD='\\033[1m'
-NORMAL='\\033[0m'
+# Color codes
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[0;33m'
+NC='\033[0m' # No color
+BOLD='\033[1m'
+NORMAL='\033[0m'
 
-# Standardkonfigurationswerte
+# Check if running in a Dev Container
+if [ "$DEVCONTAINER" = "true" ]; then
+    echo -e "${YELLOW}Running inside a Dev Container. Exiting script.${NC}"
+    exit 0
+fi
+
+# Default configuration values
 DOTFILES_REPO="https://github.com/0x369k/dotfiles.git"
 DOTDIR="${HOME}/.dotfiles"
 BACKUP_DIR="${HOME}/.dotfiles_backup/$(date +%Y-%m-%d_%H-%M-%S)"
-TEMP_DIR="/tmp/dotfiles_temp"
-LOG_DIR="${HOME}/.dotfiles_log"
-LOG_FILE="${LOG_DIR}/deploy_$(date +%Y-%m-%d_%H-%M-%S).log"
-CONTAINER_NAME="dotfiles-container"
-
-# Initialize mode variables
+TEMP_DIR=$(mktemp -d -t dotfiles_temp-XXXXXXXXXX)
+LOG_FILE=$(mktemp -t deploy.log-XXXXXXXXXX)
+WORKSPACE_DIR="/home/developer"
+INTERACTIVE=false
 DOCKER_MODE=false
 LOCAL_MODE=false
+DOCKER_WORKSPACE=""
+CONTAINER_NAME="zsh_dev_container"
 
-# Protokollierungsfunktion für allgemeine Nachrichten
+# Logging function for general messages
 log_message() {
     local status="$1"
     local message="$2"
-    local color="${3:-$NC}"
+    local color="$3"
     echo -e "${color}${status}${NC} ${message}" | tee -a "$LOG_FILE"
 }
 
-# Fehlerbehandlung und Abbruchfunktion
+# Improved safe_exit function with error logging
 safe_exit() {
     local message="$1"
-    local code="${2:-1}" # Standard-Exit-Status 1
+    local code="${2:-1}" # Default exit status 1
     log_message "✘" "$message" "$RED"
     exit "$code"
 }
 
-# Befehlsausführung mit Protokollierung
+# Improved error handling
 execute_command() {
     local command="$1"
     local message="$2"
     local ignore_error="${3:-false}"
 
     log_message "i" "$message" "$YELLOW"
+
     if $ignore_error; then
-        eval "$command" 2>>"$LOG_FILE" && log_message "✔" "$message abgeschlossen." "$GREEN" || {
-            log_message "✘" "$message fehlgeschlagen." "$RED"
+        eval "$command" 2>>"$LOG_FILE" && log_message "✔" "$message completed." "$GREEN" || {
+            log_message "✘" "$message failed." "$RED"
             true
         }
     else
-        eval "$command" 2>>"$LOG_FILE" && log_message "✔" "$message abgeschlossen." "$GREEN" || safe_exit "$message fehlgeschlagen."
+        eval "$command" 2>>"$LOG_FILE" && log_message "✔" "$message completed." "$GREEN" || safe_exit "$message failed."
     fi
 }
 
-# Sicherungsfunktion für Dateien und Verzeichnisse
-backup_files() {
-    log_message "i" "Erstellen des Backup-Verzeichnisses: ${BOLD}${BACKUP_DIR}${NORMAL}" "$YELLOW"
-    mkdir -p "${BACKUP_DIR}" || safe_exit "Konnte das Backup-Verzeichnis nicht erstellen"
+# Function to check and install dependencies
+install_dependencies() {
+    log_message "i" "Checking required dependencies..." "$YELLOW"
+    for dep in git curl; do
+        if ! command -v "$dep" &> /dev/null; then
+            log_message "i" "${BOLD}$dep${NORMAL} is not installed. Installing ${BOLD}$dep${NORMAL}..." "$YELLOW"
+            install_package "$dep"
+        else
+            log_message "✔" "${BOLD}$dep${NORMAL} is already installed." "$GREEN"
+        fi
+    done
+}
 
-    log_message "i" "Klone das Dotfiles-Repository..." "$YELLOW"
-    execute_command "git clone --depth=1 \\"${DOTFILES_REPO}\\" \\"${TEMP_DIR}\\"" "Klone das Dotfiles-Repository" || safe_exit "Klone das Dotfiles-Repository fehlgeschlagen"
-    log_message "i" "Sichern vorhandener Dateien..." "$YELLOW"
-    find "${TEMP_DIR}" -type f -print0 | while IFS= read -r -d '' file; do
+# Function to install a package based on the available package manager
+install_package() {
+    local package="$1"
+    if command -v apt-get &> /dev/null; then
+        execute_command "sudo apt-get update && sudo apt-get install -y $package" "Installing $package"
+    elif command -v yum &> /dev/null; then
+        execute_command "sudo yum install -y $package" "Installing $package"
+    elif command -v pacman &> /dev/null; then
+        execute_command "sudo pacman -Sy $package" "Installing $package"
+    elif command -v dnf &> /dev/null; then
+        execute_command "sudo dnf install -y $package" "Installing $package"
+    elif command -v brew &> /dev/null; then
+        execute_command "brew install $package" "Installing $package"
+    elif command -v zypper &> /dev/null; then
+        execute_command "sudo zypper install -y $package" "Installing $package"
+    else
+        safe_exit "Unsupported package manager. Please install $package manually."
+    fi
+}
+
+# Function to show a progress bar
+show_progress() {
+    local pid=$!
+    local delay=0.1
+    local spinstr='|/-\'
+    while [ "$(ps a | awk '{print $1}' | grep -w $pid)" ]; do
+        local temp=${spinstr#?}
+        printf " [%c]  " "$spinstr"
+        local spinstr=$temp${spinstr%"$temp"}
+        sleep $delay
+        printf "\b\b\b\b\b\b"
+    done
+    printf "    \b\b\b\b"
+}
+
+# Function to back up files with success/failure indication
+backup_files() {
+    log_message "i" "Creating backup directory: ${BOLD}${BACKUP_DIR}${NORMAL}" "$YELLOW"
+    mkdir -p "${BACKUP_DIR}" || safe_exit "Could not create backup directory"
+
+    log_message "i" "Cloning dotfiles repository..." "$YELLOW"
+    execute_command "git clone --depth=1 \"${DOTFILES_REPO}\" \"${TEMP_DIR}\"" "Cloning dotfiles repository"
+
+    log_message "i" "Backing up existing files..." "$YELLOW"
+    ( find "${TEMP_DIR}" -type f -print0 | while IFS= read -r -d '' file; do
         relative_path="${file#"${TEMP_DIR}/"}"
         target_dir="${BACKUP_DIR}/$(dirname "${relative_path}")"
         mkdir -p "${target_dir}"
         if [ -e "${HOME}/${relative_path}" ]; then
             if mv "${HOME}/${relative_path}" "${target_dir}/"; then
-                log_message "✔" "Gesichert: ${BOLD}${HOME}/${relative_path}${NORMAL} nach ${BOLD}${target_dir}/${relative_path}${NORMAL}" "$GREEN"
+                log_message "✔" "Backed up: ${BOLD}${HOME}/${relative_path}${NORMAL} to ${BOLD}${target_dir}/${relative_path}${NORMAL}" "$GREEN"
             else
-                log_message "✘" "Sicherung fehlgeschlagen: ${relative_path}" "$RED"
+                log_message "✘" "Failed to back up ${relative_path}" "$RED"
             fi
         fi
-    done
+    done ) &
+    show_progress
     rm -rf "${TEMP_DIR}"
 }
 
-# Dummy install_dependencies function
-install_dependencies() {
-    log_message "i" "Installiere Abhängigkeiten (Dummy-Funktion)" "$YELLOW"
-    # Simulate installation
-    sleep 1
-    log_message "✔" "Abhängigkeiten erfolgreich installiert (Dummy)" "$GREEN"
-}
-
-# Dummy prompt_user function
-prompt_user() {
-    log_message "i" "Benutzereingabe anfordern (Dummy-Funktion)" "$YELLOW"
-    # Simulate user prompt
-    sleep 1
-    log_message "✔" "Benutzereingabe abgeschlossen (Dummy)" "$GREEN"
-}
-
-# Dummy handle_repeated_execution function
-handle_repeated_execution() {
-    log_message "i" "Überprüfen auf wiederholte Ausführung (Dummy-Funktion)" "$YELLOW"
-    # Simulate checking for repeated execution
-    sleep 1
-    log_message "✔" "Überprüfung auf wiederholte Ausführung abgeschlossen (Dummy)" "$GREEN"
-}
-
-# Initialisieren und Auschecken der Dotfiles
+# Function to initialize and check out dotfiles
 initialize_and_checkout_dotfiles() {
     if [ -d "${DOTDIR}" ]; then
-        execute_command "mv \\"${DOTDIR}\\" \\"${BACKUP_DIR}/\\"" "Verschieben des vorhandenen ${DOTDIR} in das Backup-Verzeichnis"
+        execute_command "mv \"${DOTDIR}\" \"${BACKUP_DIR}/\"" "Moving existing ${DOTDIR} to backup directory"
     fi
-    execute_command "git clone --bare \\"${DOTFILES_REPO}\\" \\"${DOTDIR}\\"" "Klone das Bare-Repository"
-    execute_command "git --git-dir=\\"${DOTDIR}\\" --work-tree=\\"${HOME}\\" config --local status.showUntrackedFiles no" "Konfiguriere Dotfiles"
-    execute_command "git --git-dir=\\"${DOTDIR}\\" --work-tree=\\"${HOME}\\" checkout" "Checke Dotfiles aus"
+    execute_command "git clone --bare \"${DOTFILES_REPO}\" \"${DOTDIR}\"" "Cloning bare repository"
+    execute_command "git --git-dir=\"${DOTDIR}\" --work-tree=\"${HOME}\" config --local status.showUntrackedFiles no" "Configuring dotfiles"
+
+    log_message "i" "Removing old dotfiles in home directory..." "$YELLOW"
+    find "${HOME}" -maxdepth 1 -type f -exec rm -rf {} \; || safe_exit "Failed to remove old dotfiles"
+
+    execute_command "git --git-dir=\"${DOTDIR}\" --work-tree=\"${HOME}\" checkout" "Checking out dotfiles"
 }
 
-# Ausführen des Skripts innerhalb eines Docker-Containers
+# Function to run the script inside a Docker container
 run_in_docker() {
-    local docker_workspace="${1:-${HOME}/docker_workspace}"
+    local docker_workspace="${1:-/home/developer}"
 
-    # Docker-Container erstellen und ausführen
-    echo "Simulating Docker run with workspace: ${docker_workspace}"
-    execute_command "mkdir -p ${docker_workspace}" "Erstellen des Docker-Arbeitsverzeichnisses"
-    execute_command "echo \\"Docker container running...\\" > ${docker_workspace}/docker_simulation.log" "Simulieren der Docker-Ausführung"
+    # Pull the Docker image and run the container
+    docker run --rm --name ${CONTAINER_NAME} -v "${PWD}:${docker_workspace}" -w "${docker_workspace}" archlinux:latest bash -c "\
+        pacman -Syu --noconfirm --needed && \
+        pacman -S --noconfirm --needed git curl && \
+        curl -fsSL https://github.com/0x369k/dotfiles/raw/main/.zsh/deploy.sh | bash -s -- --docker"
 }
 
-# Argumente parsen
+# Function to parse arguments
 parse_args() {
     while [ "$#" -gt 0 ]; do
         case "$1" in
             --docker)
                 DOCKER_MODE=true
-                if [ -n "${2:-}" ] && [[ "$2" != --* ]]; then
+                if [ -n "$2" ] && [[ "$2" != --* ]]; then
                     DOCKER_WORKSPACE="$2"
                     shift 2
                 else
-                    DOCKER_WORKSPACE="${HOME}/docker_workspace"
                     shift
                 fi
+                ;;
+            --workspace)
+                WORKSPACE_DIR="$2"
+                shift 2
+                ;;
+            --repo)
+                DOTFILES_REPO="$2"
+                shift 2
                 ;;
             --local)
                 LOCAL_MODE=true
                 shift
                 ;;
             --help)
-                echo "Usage: $0 [--docker [PATH]] [--local] [--help]"
+                echo "Usage: $0 [--docker [PATH]] [--workspace DIR] [--repo REPO_URL] [--local]"
                 exit 0
                 ;;
             *)
@@ -154,12 +198,40 @@ parse_args() {
     done
 }
 
-# Hauptskript-Ausführung
+# Prompt user for confirmation, consider non-interactive shell
+prompt_user() {
+    if [ "${INTERACTIVE}" = true ]; then
+        echo -e "${YELLOW}The following actions will be performed:${NC}"
+        echo -e "${YELLOW}1. Backing up existing files to ${BACKUP_DIR}.${NC}"
+        echo -e "${YELLOW}2. Cloning the dotfiles repository into a temporary directory.${NC}"
+        echo -e "${YELLOW}3. Moving existing dotfiles to ${BACKUP_DIR}.${NC}"
+        echo -e "${YELLOW}4. Cloning the bare repository into ${DOTDIR}.${NC}"
+        echo -e "${YELLOW}5. Configuring and checking out the dotfiles into the home directory.${NC}"
+        echo -e "${YELLOW}6. Checking and installing dependencies (git, curl).${NC}"
+        
+        read -p "$(echo -e ${YELLOW}? Do you want to proceed with the deployment? [y/N]: ${NC})" choice
+        case "$choice" in
+            y|Y ) 
+                log_message "i" "User consented." "$YELLOW"
+                ;;
+            * ) safe_exit "Deployment aborted by user.";;
+        esac
+    else
+        log_message "i" "Non-interactive shell detected. Proceeding without user prompt." "$YELLOW"
+    fi
+}
+
+# Function to check if the script is already running
+handle_repeated_execution() {
+    if [ -f "$LOG_FILE" ]; then
+        log_message "i" "The script appears to be already running. Skipping redundant steps." "$YELLOW"
+        return
+    fi
+}
+
+# Main script execution starts here
 main() {
     parse_args "$@"
-    mkdir -p "${LOG_DIR}"
-    mkdir -p "${TEMP_DIR}"  # Ensure TEMP_DIR exists
-    log_message "i" "Starting deployment script in mode: ${DOCKER_MODE:+docker}${LOCAL_MODE:+local}"
     if [ "$DOCKER_MODE" = true ]; then
         run_in_docker "$DOCKER_WORKSPACE"
     elif [ "$LOCAL_MODE" = true ]; then
@@ -168,9 +240,9 @@ main() {
         handle_repeated_execution
         backup_files
         initialize_and_checkout_dotfiles
-        log_message "✔" "Deployment erfolgreich abgeschlossen." "$GREEN"
+        log_message "✔" "Deployment successfully completed." "$GREEN"
     else
-        echo "Unbekannter Ausführungsmodus. Verwenden Sie --docker oder --local."
+        echo "Unknown execution mode. Use --docker or --local."
         exit 1
     fi
 }
