@@ -20,13 +20,12 @@
 
 # Definiere globale Zi-Konfigurationen
 typeset -gA ZI
-ZI[HOME_DIR]="$HOME/.zi"                            # Definiere das Heimverzeichnis für Zi
-ZI[BIN_DIR]="${ZI[HOME_DIR]}/bin"                   # Definiere das Binärverzeichnis für Zi
-ZI[CONFIG_DIR]="$HOME/.config/zi"                   # Definiere das Konfigurationsverzeichnis für Zi
-ZI[CACHE_DIR]="$HOME/.cache/zi"                     # Definiere das Cache-Verzeichnis für Zi
+ZI[HOME_DIR]="$HOME/.zi"
+ZI[BIN_DIR]="${ZI[HOME_DIR]}/bin"
+ZI[CONFIG_DIR]="$HOME/.config/zi"
+ZI[CACHE_DIR]="$HOME/.cache/zi"
 ZI[ZCOMPDUMP_PATH]="${ZI[ZCOMPDUMP_PATH]:-${ZI[CACHE_DIR]}/.zcompdump}"
-ZI[REPOSITORY]="https://github.com/z-shell/zi.git"  # Zi's Git Repository URL
-ZI[STREAM]="main"                                   # Git Stream (Branch) zu verwenden
+
 
 if command -v zi &> /dev/null; then
 local missing_cmds=()
@@ -90,7 +89,7 @@ zi-turbo '0a' light-mode for \
   if'[[ -d ~/.gnupg ]]' OMZP::gpg-agent \
 && zi is-snippet wait lucid for \
   atload"unalias grv g" \
-  OMZP::{git,golang,z,vscode,copyfile,copybuffer,compleat,common-aliases,sudo,extract,pip,wp-cli,flutter,github,copypath,gh,dirhistory,mosh,nmap,web-search} \
+  OMZP::{git,golang,z,vscode,copyfile,copybuffer,compleat,common-aliases,sudo,extract,pip,wp-cli,flutter,github,copypath,dirhistory,mosh,nmap,web-search} \
   if'[[ -d ~/.ssh ]]' OMZP::ssh-agent \
   if'[[ -d ~/.gnupg ]]' OMZP::gpg-agent \
   if'[[ "$OSTYPE" = *-gnu ]]' OMZP::gnu-utils \
