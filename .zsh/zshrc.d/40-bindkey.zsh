@@ -66,7 +66,6 @@ bindkey "^a" beginning-of-line
 # Ctrl+e - move to the end of the line (alternative to End)
 bindkey "^e" end-of-line
 
-
 # Alias expansion widget
 zle -C alias-expansion complete-word _generic
 bindkey '^a' alias-expansion
@@ -90,4 +89,5 @@ bindkey "^L" insert-last-command-output
 autoload -Uz tetris
 zle -N tetris
 bindkey '^t^e' tetris
+
 

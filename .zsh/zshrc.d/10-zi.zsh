@@ -10,14 +10,14 @@
 # zicdreplay	  Ausführen compdef …Aufrufe durch Plugins.
 
 # Definiere globale Zi-Konfigurationen
-typeset -gA ZI
-ZI[HOME_DIR]="$HOME/.zi"
-ZI[BIN_DIR]="${ZI[HOME_DIR]}/bin"
-ZI[CONFIG_DIR]="$HOME/.config/zi"
-ZI[CACHE_DIR]="$HOME/.cache/zi"
-ZI[ZCOMPDUMP_PATH]="${ZI[ZCOMPDUMP_PATH]:-${ZI[CACHE_DIR]}/.zcompdump}"
-ZI[REPOSITORY]="https://github.com/z-shell/zi.git"
-ZI[STREAM]="main"
+#typeset -gA ZI
+#ZI[HOME_DIR]="$HOME/.zi"
+#ZI[BIN_DIR]="${ZI[HOME_DIR]}/bin"
+#ZI[CONFIG_DIR]="$HOME/.config/zi"
+#ZI[CACHE_DIR]="$HOME/.cache/zi"
+#ZI[ZCOMPDUMP_PATH]="${ZI[ZCOMPDUMP_PATH]:-${ZI[CACHE_DIR]}/.zcompdump}"
+#ZI[REPOSITORY]="https://github.com/z-shell/zi.git"
+#ZI[STREAM]="main"
 
 if command -v zi &> /dev/null; then
   local missing_cmds=()
@@ -45,18 +45,19 @@ if (( ${#missing_cmds[@]} > 0 )); then
   fi
 fi
 
-if [[ ! -f "${ZI[HOME_DIR]}/zi.zsh" ]]; then
-  echo "Zi wird installiert..."
-  git clone --depth 1 "${ZI[REPOSITORY]}" "${ZI[HOME_DIR]}" || {
-    echo "Fehler beim Klonen von Zi. Überprüfe deine Internetverbindung und Zugriffsrechte."
-    return 1
-  }
-fi
+#if [[ ! -f "${ZI[HOME_DIR]}/zi.zsh" ]]; then
+#  echo "Zi wird installiert..."
+#  git clone --depth 1 "${ZI[REPOSITORY]}" "${ZI[HOME_DIR]}" || {
+#    echo "Fehler beim Klonen von Zi. Überprüfe deine Internetverbindung und Zugriffsrechte."
+#    return 1
+#  }
+#fi
 
-source "${ZI[HOME_DIR]}/zi.zsh"
-autoload -Uz _zi
+#source "${ZI[HOME_DIR]}/zi.zsh"
+#autoload -Uz _zi
+#mkdir -p "$ZI[HOME_DIR]" "$ZI[BIN_DIR]" "$ZI[CACHE_DIR]" "$ZI[CONFIG_DIR]"
 
-mkdir -p "$ZI[HOME_DIR]" "$ZI[BIN_DIR]" "$ZI[CACHE_DIR]" "$ZI[CONFIG_DIR]"
+(){ source "${HOME}/.zsh/init.zsh"; zzinit; }
 
 # THEME
 zi ice if"[ \"${TERM##*-}\" = '256color' ] || [ \"${terminfo[colors]:?}\" -gt 255 ]"

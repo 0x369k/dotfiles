@@ -34,6 +34,3 @@ fi
 if [[ -d "$HOME/.cargo/bin" ]]; then
   export PATH="$PATH:$HOME/.cargo/bin"
 fi
-
-# Additional checks for vivid
-(( $+commands[vivid] )) && { typeset -gx LS_COLORS="$(vivid generate snazzy)" 2> /dev/null; }
