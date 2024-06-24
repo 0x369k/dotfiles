@@ -132,14 +132,19 @@ backup_files() {
     done ) &
     show_progress
 
-    # Backup the .zi directory if it exists
+    # Sicherung des .zi-Ordners, falls vorhanden
     if [ -d "${HOME}/.zi" ]; then
         log_message "i" "Backing up .zi directory..." "$YELLOW"
-        if cp -r "${HOME}/.zi" "${BACKUP_DIR}/"; then
-            log_message "✔" "Backed up .zi directory to ${BACKUP_DIR}" "$GREEN"
-        else
-            log_message "✘" "Failed to back up .zi directory" "$RED"
-        fi
+        find "${HOME}/.zi" -mindepth 1 -maxdepth 1 -print0 | while IFS= read -r -d '' item; do
+            relative_path="${item#"${HOME}/"}"
+            target_dir="${BACKUP_DIR}/$(dirname "${relative_path}")"
+            mkdir -p "${target_dir}"
+            if mv "${item}" "${target_dir}/"; then
+                log_message "✔" "Backed up: ${BOLD}${item}${NORMAL} to ${BOLD}${target_dir}/${relative_path}${NORMAL}" "$GREEN"
+            else
+                log_message "✘" "Failed to back up ${item}" "$RED"
+            fi
+        done
     fi
 
     rm -rf "${TEMP_DIR}"

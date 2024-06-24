@@ -34,7 +34,7 @@ alias kdedot='git --git-dir=$HOME/.kdedotfiles --work-tree=$HOME'
 # Erweiterte Dateilisten und Navigation
 export lsd_params=('--icon' 'never' '--ignore-config')
 alias lsb='lsd ${lsd_params:---icon never --ignore-config}'
-export exa_params=('--git' '--no-icons' '--octal-permissions' '--header' '--group-directories-first' '--time-style=long-iso' '--group' '--color-scale')
+export exa_params=('--git' '--octal-permissions' '--header' '--group-directories-first' '--time-style=long-iso' '--group' '--color-scale')
 alias exa="exa -g  --icons --long $exa_params --sort=changed --tree -L=1"
 alias l='exa --git-ignore $exa_params'
 alias ll='exa --all --long $exa_params'
