@@ -118,35 +118,24 @@ zi wait lucid for \
     atload"!_zsh_autosuggest_start" \
     "le0me55i/zsh-extract"
     
-    zi as"null" lucid \
-  atinit'export PYENV_ROOT="$HOME/.pyenv";
+zi ice atclone'export PYENV_ROOT="$HOME/.pyenv";
           mkdir -p "$PYENV_ROOT";
-          if [[ ! -d "$PYENV_ROOT" ]]; then
-            echo "pyenv is not installed. Installing...";
-            git clone https://github.com/pyenv/pyenv.git "$PYENV_ROOT";
-          fi;
-          if [[ ! -d "$PYENV_ROOT/plugins/pyenv-virtualenv" ]]; then
-            echo "pyenv-virtualenv is not found. Downloading...";
-            git clone https://github.com/pyenv/pyenv-virtualenv.git "$PYENV_ROOT/plugins/pyenv-virtualenv";
-          fi;
+          git clone https://github.com/pyenv/pyenv.git "$PYENV_ROOT";
+          git clone https://github.com/pyenv/pyenv-virtualenv.git "$PYENV_ROOT/plugins/pyenv-virtualenv";
           export PATH="$PYENV_ROOT/bin:$PATH";
           eval "$(pyenv init --path)";
           eval "$(pyenv virtualenv-init -)"' \
-  atclone'PYENV_ROOT="$HOME/.pyenv"; ./libexec/pyenv init - > zpyenv.zsh;
-          if [[ ! -f zpyenv.zsh ]]; then
-            echo "Error creating zpyenv.zsh. Please check your pyenv installation.";
-          fi;
-          mkdir -p "$PYENV_ROOT/plugins";
-          git clone https://github.com/pyenv/pyenv-virtualenv.git "$PYENV_ROOT/plugins/pyenv-virtualenv"' \
   atpull'%atclone' \
   src"zpyenv.zsh" \
   nocompile'!' \
   sbin"bin/pyenv" \
   for pyenv/pyenv
+
 # After pyenv is loaded, initialize pyenv-virtualenv automatically
 if [[ -d "$(pyenv root)/plugins/pyenv-virtualenv" ]]; then
   eval "$(pyenv virtualenv-init -)"
 fi
+
 
 zi ice from'gh-r' as'program' mv'vivid* vivid' sbin'**/vivid(.exe|) -> vivid'
 zi light @sharkdp/vivid
