@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-set -x  # Enable debug mode
-
 # Color codes
 GREEN='\033[0;32m'
 RED='\033[0;31m'
