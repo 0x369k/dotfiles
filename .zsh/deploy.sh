@@ -117,7 +117,7 @@ backup_files() {
     log_message "i" "Cloning dotfiles repository..." "$YELLOW"
     execute_command "git clone --depth=1 \"${DOTFILES_REPO}\" \"${TEMP_DIR}\"" "Cloning dotfiles repository"
 
-    log_message "i" "Backing up existing files..." "$YELLOW"
+    log_message "i" "Backing up existing files and directories..." "$YELLOW"
     ( find "${TEMP_DIR}" -type f -print0 | while IFS= read -r -d '' file; do
         relative_path="${file#"${TEMP_DIR}/"}"
         target_dir="${BACKUP_DIR}/$(dirname "${relative_path}")"
@@ -131,6 +131,17 @@ backup_files() {
         fi
     done ) &
     show_progress
+
+    # Backup the .zi directory if it exists
+    if [ -d "${HOME}/.zi" ]; then
+        log_message "i" "Backing up .zi directory..." "$YELLOW"
+        if cp -r "${HOME}/.zi" "${BACKUP_DIR}/"; then
+            log_message "✔" "Backed up .zi directory to ${BACKUP_DIR}" "$GREEN"
+        else
+            log_message "✘" "Failed to back up .zi directory" "$RED"
+        fi
+    fi
+
     rm -rf "${TEMP_DIR}"
 }
 
