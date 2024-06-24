@@ -25,6 +25,8 @@ ZI[BIN_DIR]="${ZI[HOME_DIR]}/bin"
 ZI[CONFIG_DIR]="$HOME/.config/zi"
 ZI[CACHE_DIR]="$HOME/.cache/zi"
 ZI[ZCOMPDUMP_PATH]="${ZI[ZCOMPDUMP_PATH]:-${ZI[CACHE_DIR]}/.zcompdump}"
+ZI[REPOSITORY]="https://github.com/z-shell/zi.git"  # Zi's Git Repository URL
+ZI[STREAM]="main"  # Git Stream (Branch) zu verwenden
 
 
 if command -v zi &> /dev/null; then
