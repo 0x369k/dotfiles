@@ -17,7 +17,7 @@ zstyle ':completion:*' format ' %F{yellow}-- %d --%f'
 zstyle ':completion:*' verbose yes
 
 # Menu-driven completion
-zstyle ':completion:*' menu selectzsh
+zstyle ':completion:*' menu select
 
 # Improved SSH/Rsync/SCP autocomplete
 zstyle ':completion:*:(scp|rsync):*' tag-order 'hosts:-ipaddr files'

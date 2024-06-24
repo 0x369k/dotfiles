@@ -1,22 +1,13 @@
 # Global configuration for Zi
 # Definitionen und Erläuterungen zu verschiedenen Zi-Befehlen und -Eigenschaften
-# wait	          Laden Sie 0 Sekunden (genau etwa 5 ms) nach der Eingabeaufforderung ( Turbomodus ).
-# lucid	          Schalten Sie die untergeordneten Meldungen stumm (" Loaded {name of the plugin}").
-# light-mode	  Laden Sie das Plugin ein lightModus. 1 .
+# wait	          Laden Sie 0 Sekunden (genau etwa 5 ms) nach der Eingabeaufforderung (Turbomodus).
+# lucid	          Schalten Sie die untergeordneten Meldungen stumm ("Loaded {name of the plugin}").
+# light-mode	  Laden Sie das Plugin im lightModus.
 # atpull'…'	  Nach der Aktualisierung des Plugins ausführen – der Befehl im Ice installiert alle neuen Vervollständigungen.
 # atinit'…'	  Führen Sie den Code aus, bevor Sie das Plugin laden.
 # atload'…'  	  Führen Sie den Code aus, nachdem Sie das Plugin geladen haben.
 # zicompinit	  Ist gleich autoload compinit; compinit.
 # zicdreplay	  Ausführen compdef …Aufrufe durch Plugins.
-
-# atclone         Führen Sie den Befehl nach dem Klonen im Plugin-Verzeichnis aus, z. B zi ice atclone"echo cloned". Läuft auch nach dem Herunterladen des Snippets.
-# atpull 	  Führen Sie den Befehl nach der Aktualisierung (nur für neue Commits) im Verzeichnis des Plugins aus.Wenn es mit „!“ beginnt dann wird der Befehl 
-#                 vorher ausgeführt mv& cpEis und davor git pulloder svn update. Ansonsten wird nachgelaufen mv& cpEis. 
-#                 Benutzen Sie die atpull'%atclone'wiederholen atcloneEismodifikator.
-# atinit 	  Führen Sie den Befehl nach der Verzeichniseinrichtung (Klonen, Überprüfen usw.) des Plugins/Snippets aus, bevor Sie es laden.
-# atload 	  Führen Sie nach dem Laden den angegebenen Befehl im Verzeichnis des Plugins aus. Kann mit Snippets verwendet werden. 
-#                 Dem übergebenen Code kann Folgendes vorangestellt werden !, zu untersuchen (bei Verwendung load, nicht light). 
-
 
 # Definiere globale Zi-Konfigurationen
 typeset -gA ZI
@@ -25,17 +16,16 @@ ZI[BIN_DIR]="${ZI[HOME_DIR]}/bin"
 ZI[CONFIG_DIR]="$HOME/.config/zi"
 ZI[CACHE_DIR]="$HOME/.cache/zi"
 ZI[ZCOMPDUMP_PATH]="${ZI[ZCOMPDUMP_PATH]:-${ZI[CACHE_DIR]}/.zcompdump}"
-ZI[REPOSITORY]="https://github.com/z-shell/zi.git"  # Zi's Git Repository URL
-ZI[STREAM]="main"  # Git Stream (Branch) zu verwenden
-
+ZI[REPOSITORY]="https://github.com/z-shell/zi.git"
+ZI[STREAM]="main"
 
 if command -v zi &> /dev/null; then
-local missing_cmds=()
-for cmd in git curl wget unzip; do
-  if ! command -v $cmd &> /dev/null; then
-    missing_cmds+=("$cmd")
-  fi
-done
+  local missing_cmds=()
+  for cmd in git curl wget unzip; do
+    if ! command -v $cmd &> /dev/null; then
+      missing_cmds+=("$cmd")
+    fi
+  done
 fi
 
 if (( ${#missing_cmds[@]} > 0 )); then
@@ -56,22 +46,22 @@ if (( ${#missing_cmds[@]} > 0 )); then
 fi
 
 if [[ ! -f "${ZI[HOME_DIR]}/zi.zsh" ]]; then
-    echo "Zi wird installiert..."
-    git clone --depth 1 "${ZI[REPOSITORY]}" "${ZI[HOME_DIR]}" || {
-        echo "Fehler beim Klonen von Zi. Überprüfe deine Internetverbindung und Zugriffsrechte."
-        return 1
-    }
+  echo "Zi wird installiert..."
+  git clone --depth 1 "${ZI[REPOSITORY]}" "${ZI[HOME_DIR]}" || {
+    echo "Fehler beim Klonen von Zi. Überprüfe deine Internetverbindung und Zugriffsrechte."
+    return 1
+  }
 fi
 
 source "${ZI[HOME_DIR]}/zi.zsh"
 autoload -Uz _zi
-#(( ${+_comps} )) && _zi register-completion zi
-mkdir -p "$ZI[HOME_DIR]" "$ZI[BIN_DIR]" "$ZI[CACHE_DIR]" "$ZI[CONFIG_DIR]"
 
+mkdir -p "$ZI[HOME_DIR]" "$ZI[BIN_DIR]" "$ZI[CACHE_DIR]" "$ZI[CONFIG_DIR]"
 
 # THEME
 zi ice if"[ \"${TERM##*-}\" = '256color' ] || [ \"${terminfo[colors]:?}\" -gt 255 ]"
 zi light romkatv/powerlevel10k
+
 # FONT FOR THEME
 if [[ ! -d ${HOME}/.fonts/ttf ]]; then mkdir -p ${HOME}/.fonts/ttf; fi
 if command -v fc-list >/dev/null 2>&1; then
@@ -82,8 +72,10 @@ if command -v fc-list >/dev/null 2>&1; then
 else
   echo "Fontconfig (fc-list) ist nicht installiert. Bitte installieren Sie Fontconfig, um fortzufahren."
 fi
+
 # ANNEX
 zi light-mode compile'functions/.*za-*~*.zwc' for z-shell/z-a-meta-plugins @annexes
+
 # OH-MY-ZSH PLUGINS 
 zi snippet 'OMZL::completion.zsh'
 zi-turbo '0a' light-mode for \
@@ -97,6 +89,7 @@ zi-turbo '0a' light-mode for \
   if'[[ "$OSTYPE" = *-gnu ]]' OMZP::gnu-utils \
   has'pip' OMZP::pip \
   has'python' OMZP::python
+
 # PLUGINS
 zi-turbo '0a' for \
   binary sbin'bin/*' \
@@ -117,25 +110,36 @@ zi wait lucid for \
     "zsh-users/zsh-autosuggestions" \
     atload"!_zsh_autosuggest_start" \
     "le0me55i/zsh-extract"
-    
-zi ice atclone'export PYENV_ROOT="$HOME/.pyenv";
-          mkdir -p "$PYENV_ROOT";
-          git clone https://github.com/pyenv/pyenv.git "$PYENV_ROOT";
-          git clone https://github.com/pyenv/pyenv-virtualenv.git "$PYENV_ROOT/plugins/pyenv-virtualenv";
-          export PATH="$PYENV_ROOT/bin:$PATH";
-          eval "$(pyenv init --path)";
-          eval "$(pyenv virtualenv-init -)"' \
-  atpull'%atclone' \
-  src"zpyenv.zsh" \
-  nocompile'!' \
-  sbin"bin/pyenv" \
-  for pyenv/pyenv
+
+# Pyenv initialisieren
+export PYENV_ROOT="$HOME/.pyenv"
+export PATH="$PYENV_ROOT/bin:$PATH"
+eval "$(pyenv init --path)"
+eval "$(pyenv init -)"
+eval "$(pyenv virtualenv-init -)"
+
+# Zi Konfiguration für pyenv
+zi ice atclone'if [[ ! -d "$HOME/.pyenv" ]]; then
+                    export PYENV_ROOT="$HOME/.pyenv";
+                    mkdir -p "$PYENV_ROOT";
+                    git clone https://github.com/pyenv/pyenv.git "$PYENV_ROOT";
+                    git clone https://github.com/pyenv/pyenv-virtualenv.git "$PYENV_ROOT/plugins/pyenv-virtualenv";
+                fi;
+                export PYENV_ROOT="$HOME/.pyenv";
+                export PATH="$PYENV_ROOT/bin:$PATH";
+                eval "$(pyenv init --path)";
+                eval "$(pyenv init -)";
+                eval "$(pyenv virtualenv-init -)"' \
+        atpull'%atclone' \
+        src"zpyenv.zsh" \
+        nocompile'!' \
+        sbin"bin/pyenv" \
+        for pyenv/pyenv
 
 # After pyenv is loaded, initialize pyenv-virtualenv automatically
 if [[ -d "$(pyenv root)/plugins/pyenv-virtualenv" ]]; then
   eval "$(pyenv virtualenv-init -)"
 fi
-
 
 zi ice from'gh-r' as'program' mv'vivid* vivid' sbin'**/vivid(.exe|) -> vivid'
 zi light @sharkdp/vivid
