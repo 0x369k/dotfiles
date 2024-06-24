@@ -9,14 +9,13 @@ fi
 
 function check_ssh_x11 {
   if [[ -n "$SSH_CLIENT" || -n "$SSH_TTY" ]]; then
-    # Prüft, ob die DISPLAY-Variable bereits gesetzt ist.
     if [[ -z "$DISPLAY" && -n "$SSH_CONNECTION" ]]; then
       export DISPLAY=:0
       echo "SSH-Sitzung erkannt. DISPLAY gesetzt auf $DISPLAY."
     fi
   fi
 }
-check_ssh_x11 
+check_ssh_x11
 
 if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
   source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
